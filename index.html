@@ -2,21 +2,33 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Mi Red Social - Inicio</title>
-  <script type="module">
-    // Importar Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, onSnapshot, doc, getDoc 
-    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Red Social - Iniciar Sesión</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="login-container">
+    <h1>Mi Red Social</h1>
+    <input type="email" id="email" placeholder="Correo">
+    <input type="password" id="password" placeholder="Contraseña">
+    <button onclick="login()">Iniciar Sesión</button>
+    <button onclick="register()">Registrarse</button>
+  </div>
 
-    // Configuración de Firebase
+  <script type="module">
+    // Importar librerías Firebase desde CDN
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, setDoc, doc } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // 🔹 Configuración de Firebase (la de MiRedSocialWeb)
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
       projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.firebasestorage.app",
+      storageBucket: "miredsocial-b50ce.appspot.com",
       messagingSenderId: "1087784350299",
       appId: "1:1087784350299:web:4c6b960635700994ef457e",
       measurementId: "G-97HJGYQX6B"
@@ -27,54 +39,37 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Publicar
-    async function publicar(){
-      const contenido = document.getElementById("contenido").value;
-      const user = auth.currentUser;
-
-      if(!user) return alert("Debes iniciar sesión");
-
-      // Obtener datos del usuario desde "users"
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      const userData = userDoc.data();
-
-      await addDoc(collection(db, "publicaciones"), {
-        uid: user.uid,
-        nombre: userData?.nombre || user.email,  // 👈 Guardamos el nombre
-        contenido: contenido,
-        fecha: new Date()
-      });
-
-      document.getElementById("contenido").value = "";
+    // 🔹 Función login
+    async function login(){
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "home.html"; // redirige al home
+      } catch(e){
+        alert("Error: " + e.message);
+      }
     }
+    window.login = login;
 
-    // Listar publicaciones
-    onSnapshot(collection(db, "publicaciones"), (snapshot) => {
-      const lista = document.getElementById("lista");
-      lista.innerHTML = "";
-      snapshot.forEach((docSnap) => {
-        const pub = docSnap.data();
-        lista.innerHTML += `
-          <div style="background:#222; color:#fff; padding:10px; margin:10px; border-radius:8px;">
-            <h3>${pub.nombre}</h3>
-            <p>${pub.contenido}</p>
-            <small>${pub.fecha.toDate ? pub.fecha.toDate().toLocaleString() : new Date(pub.fecha).toLocaleString()}</small>
-          </div>
-        `;
-      });
-    });
-
-    window.publicar = publicar;
+    // 🔹 Función register
+    async function register(){
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        // Guardar datos en Firestore
+        await setDoc(doc(db, "users", cred.user.uid), {
+          uid: cred.user.uid,
+          email: email,
+          nombre: email.split("@")[0]
+        });
+        window.location.href = "home.html"; // redirige al home
+      } catch(e){
+        alert("Error: " + e.message);
+      }
+    }
+    window.register = register;
   </script>
-</head>
-<body style="background:#111; color:white; font-family:sans-serif;">
-  <h2>Crear publicación</h2>
-  <textarea id="contenido" placeholder="¿Qué estás pensando?" style="width:300px; height:60px;"></textarea>
-  <br>
-  <button onclick="publicar()">Publicar</button>
-
-  <h2>Publicaciones</h2>
-  <div id="lista"></div>
 </body>
 </html>
-
