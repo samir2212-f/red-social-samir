@@ -53,12 +53,12 @@
     import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // 🔑 Tu configuración de Firebase
+    // 🔑 Configuración corregida
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
       projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.firebasestorage.app",
+      storageBucket: "miredsocial-b50ce.appspot.com", // ✅ Corregido
       messagingSenderId: "1087784350299",
       appId: "1:1087784350299:web:8a7548dd103e6ab1ef457e",
       measurementId: "G-ZBD3R90E6L"
