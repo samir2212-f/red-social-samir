@@ -1,79 +1,63 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Mi Red Social - Inicio</title>
-  <script type="module">
-    // Importar Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
-    import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, onSnapshot, doc, getDoc 
-    } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+  import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-auth.js";
+  import { 
+    getFirestore, collection, addDoc, onSnapshot, doc, getDoc, orderBy, query 
+  } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
 
-    // Configuración de Firebase
-    const firebaseConfig = {
-      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
-      authDomain: "miredsocial-b50ce.firebaseapp.com",
-      projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.firebasestorage.app",
-      messagingSenderId: "1087784350299",
-      appId: "1:1087784350299:web:4c6b960635700994ef457e",
-      measurementId: "G-97HJGYQX6B"
-    };
+  // Configuración de Firebase
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+    authDomain: "miredsocial-b50ce.firebaseapp.com",
+    projectId: "miredsocial-b50ce",
+    storageBucket: "miredsocial-b50ce.firebasestorage.app",
+    messagingSenderId: "1087784350299",
+    appId: "1:1087784350299:web:4c6b960635700994ef457e",
+    measurementId: "G-97HJGYQX6B"
+  };
 
-    // Inicializar Firebase
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    // Publicar
-    async function publicar(){
-      const contenido = document.getElementById("contenido").value;
-      const user = auth.currentUser;
+  // Publicar
+  async function publicar(){
+    const contenido = document.getElementById("contenido").value;
+    const user = auth.currentUser;
 
-      if(!user) return alert("Debes iniciar sesión");
+    if(!user) return alert("Debes iniciar sesión");
 
-      // Obtener datos del usuario desde "users"
-      const userDoc = await getDoc(doc(db, "users", user.uid));
-      const userData = userDoc.data();
+    // Traer datos del usuario
+    const userDoc = await getDoc(doc(db, "users", user.uid));
+    const userData = userDoc.data();
 
-      await addDoc(collection(db, "publicaciones"), {
-        uid: user.uid,
-        nombre: userData?.nombre || user.email,  // 👈 Guardamos el nombre
-        contenido: contenido,
-        fecha: new Date()
-      });
-
-      document.getElementById("contenido").value = "";
-    }
-
-    // Listar publicaciones
-    onSnapshot(collection(db, "publicaciones"), (snapshot) => {
-      const lista = document.getElementById("lista");
-      lista.innerHTML = "";
-      snapshot.forEach((docSnap) => {
-        const pub = docSnap.data();
-        lista.innerHTML += `
-          <div style="background:#222; color:#fff; padding:10px; margin:10px; border-radius:8px;">
-            <h3>${pub.nombre}</h3>
-            <p>${pub.contenido}</p>
-            <small>${pub.fecha.toDate ? pub.fecha.toDate().toLocaleString() : new Date(pub.fecha).toLocaleString()}</small>
-          </div>
-        `;
-      });
+    await addDoc(collection(db, "publicaciones"), {
+      uid: user.uid,
+      nombre: userData?.nombre || user.email,  
+      contenido: contenido,
+      fecha: new Date()
     });
 
-    window.publicar = publicar;
-  </script>
-</head>
-<body style="background:#111; color:white; font-family:sans-serif;">
-  <h2>Crear publicación</h2>
-  <textarea id="contenido" placeholder="¿Qué estás pensando?" style="width:300px; height:60px;"></textarea>
-  <br>
-  <button onclick="publicar()">Publicar</button>
+    document.getElementById("contenido").value = "";
+  }
 
-  <h2>Publicaciones</h2>
-  <div id="lista"></div>
-</body>
-</html>
+  // Listar publicaciones con estilo
+  const q = query(collection(db, "publicaciones"), orderBy("fecha", "desc"));
+  onSnapshot(q, (snapshot) => {
+    const lista = document.getElementById("lista");
+    lista.innerHTML = "";
+    snapshot.forEach((docSnap) => {
+      const pub = docSnap.data();
+      lista.innerHTML += `
+        <div style="background:#181818; color:#fff; padding:15px; margin:15px 0; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.4);">
+          <h3 style="margin:0; color:#4da6ff;">${pub.nombre}</h3>
+          <p style="margin:8px 0;">${pub.contenido}</p>
+          <small style="color:#aaa;">${pub.fecha.toDate ? pub.fecha.toDate().toLocaleString() : new Date(pub.fecha).toLocaleString()}</small>
+        </div>
+      `;
+    });
+  });
+
+  window.publicar = publicar;
+</script>
+
