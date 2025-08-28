@@ -2,209 +2,99 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Mi Red Social</title>
-  <!-- Fuente elegante -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Red Social - Iniciar Sesión</title>
   <style>
-    :root{
-      --bg: #0b0b0c;
-      --bg2: #111214;
-      --card: #121316;
-      --edge: #1c1e22;
-      --accent: #8ad0ff; /* brillo frío azulado */
-      --accent-strong: #39a8ff;
-      --silver: #cfd3d6;
-      --silver-deep: #9aa1a6;
-      --ok: #4cd964;
-      --warn: #ffcc00;
-      --err: #ff4d4f;
-    }
-
-    /* FONDO: negro metálico con brillo sutil animado */
-    html, body { height: 100%; }
-    body{
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, #0d0d0f, #1a1a1d, #2a2a2f);
+      color: #fff;
       margin: 0;
-      font-family: 'Poppins', system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-      color: #e8eaed;
-      background: radial-gradient(1200px 600px at 10% 10%, #1a1c21 0%, transparent 60%),
-                  radial-gradient(1000px 500px at 90% 90%, #101217 0%, transparent 60%),
-                  linear-gradient(180deg, var(--bg) 0%, var(--bg2) 100%);
-      overflow-x: hidden;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
     }
-    /* brillo móvil */
-    body::before{
-      content:"";
-      position: fixed; inset: -20% -20% auto -20%; height: 55vh;
-      background: linear-gradient(120deg, transparent 0 40%, rgba(255,255,255,.06) 50%, transparent 60% 100%);
-      transform: translateX(-60%);
-      animation: sweep 9s linear infinite;
-      pointer-events: none;
+    .container {
+      background: rgba(30, 30, 35, 0.95);
+      padding: 30px;
+      border-radius: 20px;
+      box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
+      width: 350px;
+      text-align: center;
     }
-    @keyframes sweep{ to{ transform: translateX(140%); } }
-
-    /* CONTENEDOR CENTRAL */
-    .wrap{
-      max-width: 1120px; margin: 0 auto; padding: 48px 16px 64px;
-      display: grid; place-items: center; gap: 28px;
+    h2 {
+      margin-bottom: 20px;
+      color: #cfcfcf;
+      text-shadow: 0 0 5px #777;
     }
-
-    /* TITULO con borde cromado */
-    .title{
-      font-size: clamp(28px, 4vw, 44px);
-      letter-spacing: 0.5px; font-weight: 700; text-transform: uppercase;
-      background: linear-gradient(180deg, #f1f3f4 0%, #b5bcc1 25%, #8e959a 50%, #e3e6e8 80%);
-      -webkit-background-clip: text; background-clip: text; color: transparent;
-      filter: drop-shadow(0 6px 18px rgba(138, 208, 255, .12));
+    input {
+      width: 90%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 10px;
+      background: #121212;
+      color: #fff;
+      box-shadow: inset 0 0 5px rgba(255,255,255,0.2);
     }
-    .subtitle{ color: #a7adb4; font-weight: 300; margin-top: -8px; }
-
-    /* TARJETAS con efecto metal / vidrio */
-    .card{
-      width: min(100%, 380px);
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.02)) padding-box,
-        linear-gradient(135deg, #2e3136, #1c1f23 30%, #101216 60%, #32363b) border-box;
-      border: 1px solid transparent;
-      border-radius: 18px;
-      padding: 22px 20px 20px;
-      box-shadow:
-        inset 0 0 0 1px rgba(255,255,255,.02),
-        0 10px 30px rgba(0,0,0,.55),
-        0 1px 0 rgba(255,255,255,.05);
-      position: relative;
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 10px;
+      background: linear-gradient(90deg, #00c6ff, #0072ff);
+      color: white;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 0 10px rgba(0, 198, 255, 0.6);
+      transition: transform 0.2s ease;
     }
-    .card::after{ /* línea superior cromada */
-      content:""; position: absolute; inset: 0 0 auto 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,.35), transparent);
-      opacity: .6; pointer-events: none;
+    button:hover {
+      transform: scale(1.05);
     }
-
-    h2{ margin: 6px 0 14px; font-size: 20px; font-weight: 600; }
-
-    .row{ display: grid; gap: 10px; margin: 12px 0 2px; }
-    input{
-      width: 100%; height: 44px; border-radius: 12px; outline: none;
-      border: 1px solid var(--edge);
-      background: linear-gradient(180deg, #0f1114, #0b0c0e);
-      color: #e9edf1; padding: 0 14px; font-size: 14px;
-      box-shadow: inset 0 1px 3px rgba(0,0,0,.6), 0 0 0 0 rgba(57,168,255,0);
-      transition: box-shadow .2s, border-color .2s;
+    .toggle-link {
+      margin-top: 15px;
+      display: block;
+      color: #aaa;
+      cursor: pointer;
     }
-    input::placeholder{ color: #7f8690; }
-    input:focus{
-      border-color: #243c4f;
-      box-shadow: 0 0 0 3px rgba(57,168,255,.18), inset 0 1px 3px rgba(0,0,0,.7);
+    .hidden {
+      display: none;
     }
-
-    .btn{
-      appearance: none; width: 100%; height: 44px; border: none; border-radius: 12px;
-      font-weight: 700; letter-spacing: .2px; cursor: pointer;
-      background:
-        linear-gradient(180deg, #2a2d31, #191c20) padding-box,
-        linear-gradient(135deg, #9aa1a6, #d5dadd 40%, #8a8f94 70%, #eef2f5) border-box;
-      border: 1px solid transparent; color: var(--silver);
-      box-shadow: 0 10px 20px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.06);
-      position: relative; overflow: hidden;
-      transition: transform .08s ease, box-shadow .2s ease;
-    }
-    .btn:hover{ box-shadow: 0 14px 26px rgba(0,0,0,.6), 0 0 0 3px rgba(57,168,255,.12) inset; }
-    .btn:active{ transform: translateY(1px) scale(.99); }
-    .btn .shine{
-      content:""; position: absolute; inset: 0; pointer-events: none;
-      background: linear-gradient(120deg, transparent 0 40%, rgba(255,255,255,.24) 50%, transparent 60% 100%);
-      transform: translateX(-80%);
-      animation: sweep 4.6s ease-in-out infinite;
-      opacity: .35;
-    }
-
-    .muted{ font-size: 13px; color: #9aa1a6; }
-    .link{ color: var(--accent); font-weight: 600; cursor: pointer; }
-    .link:hover{ color: var(--accent-strong); text-decoration: underline; }
-
-    /* Perfil */
-    .profile{
-      display: grid; gap: 10px;
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015)) padding-box,
-        linear-gradient(135deg, #4a4f55, #2a2f35 30%, #0f1216 65%, #434850) border-box;
-      border: 1px solid transparent; border-radius: 18px;
-      width: min(100%, 420px); padding: 22px 20px 20px;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,.02), 0 10px 30px rgba(0,0,0,.55);
-    }
-    .profile p{ margin: 0; color: #cfd3d6; }
-
-    /* Toast simple */
-    .toast{ position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-            background: #0f1114; color: #e6ebef; border: 1px solid #2a2e34; border-radius: 10px;
-            padding: 10px 14px; font-size: 14px; box-shadow: 0 8px 24px rgba(0,0,0,.5);
-            display: none; }
-    .toast.show{ display: inline-block; animation: pop .2s ease; }
-    @keyframes pop{ from{ transform: translate(-50%, 8px); opacity: .6; } to{ transform: translate(-50%, 0); opacity: 1; } }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="title">Mi Red Social</div>
-    <div class="subtitle">Tema negro brillante / plateado ✨</div>
-
+  <div class="container">
     <!-- Login -->
-    <div id="loginDiv" class="card" aria-live="polite">
-      <h2>Iniciar sesión</h2>
-      <div class="row">
-        <input type="email" id="loginEmail" placeholder="Correo" autocomplete="email">
-        <input type="password" id="loginPassword" placeholder="Contraseña" autocomplete="current-password">
-        <button class="btn" onclick="login()">
-          <span>Entrar</span>
-          <i class="shine"></i>
-        </button>
-      </div>
-      <p class="muted">¿No tienes cuenta?
-        <span class="link" onclick="showRegister()">Regístrate</span>
-      </p>
+    <div id="loginDiv">
+      <h2>Iniciar Sesión</h2>
+      <input type="email" id="loginEmail" placeholder="Correo electrónico">
+      <input type="password" id="loginPassword" placeholder="Contraseña">
+      <button onclick="login()">Entrar</button>
+      <span class="toggle-link" onclick="toggleForms()">¿No tienes cuenta? Regístrate</span>
     </div>
 
     <!-- Registro -->
-    <div id="registerDiv" class="card hidden">
-      <h2>Crear cuenta</h2>
-      <div class="row">
-        <input type="email" id="registerEmail" placeholder="Correo" autocomplete="email">
-        <input type="password" id="registerPassword" placeholder="Contraseña" autocomplete="new-password">
-        <input type="text" id="registerUsername" placeholder="Nombre de usuario" autocomplete="nickname">
-        <button class="btn" onclick="register()">
-          <span>Registrarme</span>
-          <i class="shine"></i>
-        </button>
-      </div>
-      <p class="muted">¿Ya tienes cuenta?
-        <span class="link" onclick="showLogin()">Inicia sesión</span>
-      </p>
-    </div>
-
-    <!-- Perfil -->
-    <div id="profileDiv" class="profile hidden">
-      <h2 style="margin:6px 0 6px">Bienvenido <span id="usernameDisplay"></span> 👋</h2>
-      <p>Tu correo: <strong id="emailDisplay"></strong></p>
-      <button class="btn" onclick="logout()">
-        <span>Cerrar sesión</span>
-        <i class="shine"></i>
-      </button>
+    <div id="registerDiv" class="hidden">
+      <h2>Registrarse</h2>
+      <input type="text" id="registerUsername" placeholder="Nombre de usuario">
+      <input type="email" id="registerEmail" placeholder="Correo electrónico">
+      <input type="password" id="registerPassword" placeholder="Contraseña">
+      <button onclick="register()">Crear Cuenta</button>
+      <span class="toggle-link" onclick="toggleForms()">¿Ya tienes cuenta? Inicia sesión</span>
     </div>
   </div>
 
-  <div id="toast" class="toast">Mensaje</div>
-
   <!-- Firebase -->
   <script type="module">
-    // Importar Firebase (versiones modernas ESM)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
-    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // Configuración Firebase (bucket corregido a appspot.com)
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
@@ -216,102 +106,47 @@
     };
 
     const app = initializeApp(firebaseConfig);
-    const analytics = getAnalytics(app);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // Helpers UI
-    const loginDiv = document.getElementById("loginDiv");
-    const registerDiv = document.getElementById("registerDiv");
-    const profileDiv = document.getElementById("profileDiv");
-    const usernameDisplay = document.getElementById("usernameDisplay");
-    const emailDisplay = document.getElementById("emailDisplay");
-    const toast = document.getElementById('toast');
-
-    function showLogin(){
-      loginDiv.classList.remove("hidden");
-      registerDiv.classList.add("hidden");
-    }
-    window.showLogin = showLogin; // para onclick inline
-
-    function showRegister(){
-      registerDiv.classList.remove("hidden");
-      loginDiv.classList.add("hidden");
-    }
-    window.showRegister = showRegister;
-
-    function showToast(msg){
-      toast.textContent = msg; toast.classList.add('show');
-      setTimeout(()=> toast.classList.remove('show'), 2400);
+    // Cambiar entre login y registro
+    window.toggleForms = function(){
+      document.getElementById("loginDiv").classList.toggle("hidden");
+      document.getElementById("registerDiv").classList.toggle("hidden");
     }
 
     // Registro
-    async function register(){
+    window.register = async function(){
+      const username = document.getElementById("registerUsername").value.trim();
       const email = document.getElementById("registerEmail").value.trim();
       const password = document.getElementById("registerPassword").value;
-      const username = document.getElementById("registerUsername").value.trim();
-
-      if(!email || !password || !username){
-        showToast('Completa todos los campos'); return;
-      }
-      if(password.length < 6){ showToast('La contraseña debe tener 6+ caracteres'); return; }
-
       try{
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
-        const user = cred.user;
-        await setDoc(doc(db, 'users', user.uid), { username, email });
-        showToast('Cuenta creada 🎉');
-        showLogin();
-      } catch(err){
-        console.error(err);
-        showToast(err.message);
+        const userCred = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", userCred.user.uid), {
+          username: username,
+          email: email
+        });
+        alert("Cuenta creada ✅ Ahora inicia sesión");
+        toggleForms();
+      }catch(err){
+        alert("Error: " + err.message);
       }
     }
-    window.register = register;
 
     // Login
-    async function login(){
+    window.login = async function(){
       const email = document.getElementById("loginEmail").value.trim();
       const password = document.getElementById("loginPassword").value;
-      if(!email || !password){ showToast('Ingresa tu correo y contraseña'); return; }
       try{
         await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "home.html"; // redirige al home
       }catch(err){
-        console.error(err);
-        showToast(err.message);
+        alert("Error: " + err.message);
       }
     }
-    window.login = login;
-
-    // Logout
-    async function logout(){
-      await signOut(auth);
-      showToast('Sesión cerrada');
-    }
-    window.logout = logout;
-
-    // Estado de autenticación
-    onAuthStateChanged(auth, async (user)=>{
-      if(user){
-        const ref = doc(db, 'users', user.uid);
-        const snap = await getDoc(ref);
-        if(snap.exists()){
-          usernameDisplay.textContent = snap.data().username || 'Usuario';
-          emailDisplay.textContent = snap.data().email || user.email;
-        } else {
-          usernameDisplay.textContent = 'Usuario';
-          emailDisplay.textContent = user.email;
-        }
-        profileDiv.classList.remove('hidden');
-        loginDiv.classList.add('hidden');
-        registerDiv.classList.add('hidden');
-      } else {
-        profileDiv.classList.add('hidden');
-        loginDiv.classList.remove('hidden');
-      }
-    });
   </script>
 </body>
 </html>
+
 
 
