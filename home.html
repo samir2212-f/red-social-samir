@@ -55,7 +55,7 @@
     }
     input[type="file"] {
       margin-top: 10px;
-      color: #eee;
+      color: #ccc;
     }
     button {
       margin-top: 10px;
@@ -86,13 +86,8 @@
     }
     .post img {
       max-width: 100%;
-      border-radius: 6px;
       margin-top: 10px;
-    }
-    .post a {
-      display: block;
-      margin-top: 8px;
-      color: #0af;
+      border-radius: 6px;
     }
   </style>
 </head>
@@ -117,13 +112,15 @@
   </main>
 
   <script type="module">
+    // Firebase SDK
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } 
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
     import { getStorage, ref, uploadBytes, getDownloadURL } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
+    // Configuración Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
@@ -141,6 +138,7 @@
 
     let currentUser;
 
+    // Revisar sesión
     onAuthStateChanged(auth, (user) => {
       if(user){
         currentUser = user;
@@ -150,43 +148,63 @@
       }
     });
 
+    // Publicar
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
-      const file = document.getElementById("fileInput").files[0];
+      const fileInput = document.getElementById("fileInput");
       let fileURL = null;
+      let fileName = null;
 
-      if(file){
-        const fileRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${file.name}`);
-        await uploadBytes(fileRef, file);
-        fileURL = await getDownloadURL(fileRef);
+      if(content === "" && fileInput.files.length === 0) return;
+
+      if(fileInput.files.length > 0){
+        const file = fileInput.files[0];
+        fileName = file.name;
+        const storageRef = ref(storage, "uploads/" + Date.now() + "_" + file.name);
+        await uploadBytes(storageRef, file);
+        fileURL = await getDownloadURL(storageRef);
       }
 
       await addDoc(collection(db, "posts"), {
         uid: currentUser.uid,
         content: content,
         fileURL: fileURL,
-        fileName: file ? file.name : null,
+        fileName: fileName,
         timestamp: serverTimestamp()
       });
 
       document.getElementById("postContent").value = "";
-      document.getElementById("fileInput").value = "";
+      fileInput.value = "";
     }
     window.publishPost = publishPost;
 
+    // Cargar publicaciones
     function loadPosts(){
       const q = query(collection(db, "posts"), orderBy("timestamp","desc"));
-      onSnapshot(q, (snapshot) => {
+      onSnapshot(q, async (snapshot) => {
         const feedDiv = document.getElementById("feed");
         feedDiv.innerHTML = "";
-        snapshot.forEach(doc => {
-          const post = doc.data();
+
+        for (const docSnap of snapshot.docs) {
+          const post = docSnap.data();
+
+          // Buscar nombre del usuario
+          let username = "Usuario desconocido";
+          try {
+            const userDoc = await getDoc(doc(db, "users", post.uid));
+            if(userDoc.exists()){
+              username = userDoc.data().nombre || userDoc.data().email;
+            }
+          } catch (e) {
+            console.log("Error obteniendo nombre:", e);
+          }
+
           const div = document.createElement("div");
           div.classList.add("post");
 
           let fileHTML = "";
           if(post.fileURL){
-            if(post.fileName.match(/\.(jpg|jpeg|png|gif)$/i)){
+            if(post.fileName && post.fileName.match(/\.(jpg|jpeg|png|gif)$/i)){
               fileHTML = `<img src="${post.fileURL}" alt="Imagen">`;
             } else {
               fileHTML = `<a href="${post.fileURL}" target="_blank">📎 ${post.fileName}</a>`;
@@ -194,16 +212,17 @@
           }
 
           div.innerHTML = `
-            <p><strong>${post.uid}</strong></p>
+            <p><strong>${username}</strong></p>
             <p>${post.content}</p>
             ${fileHTML}
             <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
           `;
           feedDiv.appendChild(div);
-        });
+        }
       });
     }
 
+    // Logout
     document.getElementById("logoutBtn").addEventListener("click", () => {
       signOut(auth).then(() => {
         window.location.href = "index.html";
@@ -212,3 +231,4 @@
   </script>
 </body>
 </html>
+
