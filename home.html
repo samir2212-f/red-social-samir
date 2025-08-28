@@ -53,6 +53,10 @@
       background: #333;
       color: #eee;
     }
+    input[type="file"] {
+      margin-top: 10px;
+      color: #eee;
+    }
     button {
       margin-top: 10px;
       padding: 10px 15px;
@@ -80,6 +84,16 @@
       color: #888;
       margin-top: 5px;
     }
+    .post img {
+      max-width: 100%;
+      border-radius: 6px;
+      margin-top: 10px;
+    }
+    .post a {
+      display: block;
+      margin-top: 8px;
+      color: #0af;
+    }
   </style>
 </head>
 <body>
@@ -93,6 +107,7 @@
     <section class="post-box">
       <h2>Crear publicación</h2>
       <textarea id="postContent" rows="3" placeholder="¿Qué estás pensando?"></textarea>
+      <input type="file" id="fileInput">
       <button onclick="publishPost()">Publicar</button>
     </section>
     <section>
@@ -102,19 +117,18 @@
   </main>
 
   <script type="module">
-    // ✅ Import Firebase
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { 
-      getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc 
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-    // ✅ Tu configuración real de Firebase
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
       projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.firebasestorage.app",
+      storageBucket: "miredsocial-b50ce.appspot.com",
       messagingSenderId: "1087784350299",
       appId: "1:1087784350299:web:4c6b960635700994ef457e",
       measurementId: "G-97HJGYQX6B"
@@ -123,10 +137,10 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
+    const storage = getStorage(app);
 
     let currentUser;
 
-    // 🔹 Revisar sesión
     onAuthStateChanged(auth, (user) => {
       if(user){
         currentUser = user;
@@ -136,38 +150,53 @@
       }
     });
 
-    // 🔹 Publicar
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
-      if(content === "") return;
+      const file = document.getElementById("fileInput").files[0];
+      let fileURL = null;
 
-      // buscar datos del usuario en "users"
-      const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-      const userData = userDoc.exists() ? userDoc.data() : null;
+      if(file){
+        const fileRef = ref(storage, `posts/${currentUser.uid}/${Date.now()}_${file.name}`);
+        await uploadBytes(fileRef, file);
+        fileURL = await getDownloadURL(fileRef);
+      }
 
       await addDoc(collection(db, "posts"), {
         uid: currentUser.uid,
-        nombre: userData?.nombre || currentUser.email,
         content: content,
+        fileURL: fileURL,
+        fileName: file ? file.name : null,
         timestamp: serverTimestamp()
       });
+
       document.getElementById("postContent").value = "";
+      document.getElementById("fileInput").value = "";
     }
     window.publishPost = publishPost;
 
-    // 🔹 Mostrar publicaciones en tiempo real
     function loadPosts(){
       const q = query(collection(db, "posts"), orderBy("timestamp","desc"));
       onSnapshot(q, (snapshot) => {
         const feedDiv = document.getElementById("feed");
         feedDiv.innerHTML = "";
-        snapshot.forEach(docSnap => {
-          const post = docSnap.data();
+        snapshot.forEach(doc => {
+          const post = doc.data();
           const div = document.createElement("div");
           div.classList.add("post");
+
+          let fileHTML = "";
+          if(post.fileURL){
+            if(post.fileName.match(/\.(jpg|jpeg|png|gif)$/i)){
+              fileHTML = `<img src="${post.fileURL}" alt="Imagen">`;
+            } else {
+              fileHTML = `<a href="${post.fileURL}" target="_blank">📎 ${post.fileName}</a>`;
+            }
+          }
+
           div.innerHTML = `
-            <p><strong>${post.nombre || "Usuario"}</strong></p>
+            <p><strong>${post.uid}</strong></p>
             <p>${post.content}</p>
+            ${fileHTML}
             <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
           `;
           feedDiv.appendChild(div);
@@ -175,7 +204,6 @@
       });
     }
 
-    // 🔹 Logout
     document.getElementById("logoutBtn").addEventListener("click", () => {
       signOut(auth).then(() => {
         window.location.href = "index.html";
