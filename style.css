@@ -1,0 +1,27 @@
+body {
+  font-family: Arial, sans-serif;
+  background: #f4f4f4;
+  margin: 0; padding: 0;
+}
+#app {
+  width: 90%;
+  max-width: 500px;
+  margin: auto;
+  padding: 20px;
+}
+.hidden { display: none; }
+input, textarea, button {
+  width: 100%; padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #ccc; border-radius: 5px;
+}
+button {
+  background: #007bff; color: white;
+  border: none; cursor: pointer;
+}
+button:hover { background: #0056b3; }
+.post {
+  background: white; padding: 10px;
+  margin: 10px 0; border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}

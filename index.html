@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Red Social</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background: #f5f6fa; }
+    .hidden { display: none; }
+    .card { background: white; border: 1px solid #ddd; padding: 20px; border-radius: 10px; margin: 10px auto; width: 320px; box-shadow: 0 3px 6px rgba(0,0,0,0.1); }
+    input { width: 90%; padding: 10px; margin: 8px 0; border: 1px solid #ccc; border-radius: 5px; }
+    button { padding: 10px; margin-top: 10px; cursor: pointer; border: none; border-radius: 5px; background: #3498db; color: white; font-weight: bold; }
+    button:hover { background: #2980b9; }
+    h1 { color: #2c3e50; }
+    a { color: #3498db; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <h1>🚀 Mi Red Social</h1>
+
+  <!-- Login -->
+  <div id="loginDiv" class="card">
+    <h2>Iniciar sesión</h2>
+    <input type="email" id="loginEmail" placeholder="Correo">
+    <input type="password" id="loginPassword" placeholder="Contraseña">
+    <button onclick="login()">Entrar</button>
+    <p>¿No tienes cuenta? <a onclick="showRegister()">Regístrate</a></p>
+  </div>
+
+  <!-- Registro -->
+  <div id="registerDiv" class="card hidden">
+    <h2>Crear cuenta</h2>
+    <input type="email" id="registerEmail" placeholder="Correo">
+    <input type="password" id="registerPassword" placeholder="Contraseña">
+    <input type="text" id="registerUsername" placeholder="Nombre de usuario">
+    <button onclick="register()">Registrarme</button>
+    <p>¿Ya tienes cuenta? <a onclick="showLogin()">Inicia sesión</a></p>
+  </div>
+
+  <!-- Perfil -->
+  <div id="profileDiv" class="card hidden">
+    <h2>Bienvenido <span id="usernameDisplay"></span> 👋</h2>
+    <p>Tu correo: <span id="emailDisplay"></span></p>
+    <button onclick="logout()">Cerrar sesión</button>
+  </div>
+
+  <!-- Firebase -->
+  <script type="module">
+    // Importar Firebase
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js";
+    import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, setDoc, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    // 🔑 Tu configuración de Firebase
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+      authDomain: "miredsocial-b50ce.firebaseapp.com",
+      projectId: "miredsocial-b50ce",
+      storageBucket: "miredsocial-b50ce.firebasestorage.app",
+      messagingSenderId: "1087784350299",
+      appId: "1:1087784350299:web:8a7548dd103e6ab1ef457e",
+      measurementId: "G-ZBD3R90E6L"
+    };
+
+    // Inicializar Firebase
+    const app = initializeApp(firebaseConfig);
+    const analytics = getAnalytics(app);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    // Referencias de UI
+    const loginDiv = document.getElementById("loginDiv");
+    const registerDiv = document.getElementById("registerDiv");
+    const profileDiv = document.getElementById("profileDiv");
+    const usernameDisplay = document.getElementById("usernameDisplay");
+    const emailDisplay = document.getElementById("emailDisplay");
+
+    function showLogin() {
+      loginDiv.classList.remove("hidden");
+      registerDiv.classList.add("hidden");
+    }
+
+    function showRegister() {
+      registerDiv.classList.remove("hidden");
+      loginDiv.classList.add("hidden");
+    }
+
+    // Registro
+    async function register() {
+      const email = document.getElementById("registerEmail").value;
+      const password = document.getElementById("registerPassword").value;
+      const username = document.getElementById("registerUsername").value;
+
+      try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        // Guardar perfil en Firestore
+        await setDoc(doc(db, "users", user.uid), {
+          username: username,
+          email: email
+        });
+
+        alert("Cuenta creada con éxito 🎉 Ahora inicia sesión.");
+        showLogin();
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    // Login
+    async function login() {
+      const email = document.getElementById("loginEmail").value;
+      const password = document.getElementById("loginPassword").value;
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+      } catch (error) {
+        alert(error.message);
+      }
+    }
+
+    // Logout
+    async function logout() {
+      await signOut(auth);
+    }
+
+    // Detectar usuario logueado
+    onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          usernameDisplay.textContent = docSnap.data().username;
+          emailDisplay.textContent = docSnap.data().email;
+        }
+        profileDiv.classList.remove("hidden");
+        loginDiv.classList.add("hidden");
+        registerDiv.classList.add("hidden");
+      } else {
+        profileDiv.classList.add("hidden");
+        loginDiv.classList.remove("hidden");
+      }
+    });
+  </script>
+</body>
+</html>
