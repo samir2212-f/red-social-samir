@@ -1,219 +1,69 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Red Social - Home</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      margin: 0;
-      padding: 0;
-    }
-    header {
-      background: linear-gradient(90deg, #222, #444);
-      padding: 15px;
-      text-align: center;
-      font-size: 22px;
-      font-weight: bold;
-      color: #fff;
-    }
-    nav {
-      background: #222;
-      display: flex;
-      justify-content: space-around;
-      padding: 10px;
-    }
-    nav a {
-      color: #ccc;
-      text-decoration: none;
-      font-weight: bold;
-    }
-    nav a:hover {
-      color: #fff;
-    }
-    main {
-      padding: 20px;
-    }
-    .post-box {
-      background: #222;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    textarea, input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
-      resize: none;
-      background: #333;
-      color: #eee;
-      margin-bottom: 10px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 6px;
-      background: #0af;
-      color: #fff;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #09c;
-    }
-    .post {
-      background: #1a1a1a;
-      margin-bottom: 15px;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0px 0px 5px rgba(255,255,255,0.1);
-    }
-    .post strong {
-      color: #0af;
-    }
-    .post small {
-      display: block;
-      color: #888;
-      margin-top: 5px;
-    }
-    .post img {
-      max-width: 100%;
-      border-radius: 6px;
-      margin-top: 10px;
-    }
-  </style>
-</head>
-<body>
-  <header>Mi Red Social - Inicio</header>
-  <nav>
-    <a href="home.html">Inicio</a>
-    <a href="chat.html">Chat</a>
-    <a href="#" id="logoutBtn">Salir</a>
-  </nav>
-  <main>
-    <section class="post-box">
-      <h2>Crear publicación</h2>
-      <textarea id="postContent" rows="3" placeholder="¿Qué estás pensando?"></textarea>
-      <input type="file" id="fileInput">
-      <button onclick="publishPost()">Publicar</button>
-    </section>
-    <section>
-      <h2>Publicaciones</h2>
-      <div id="feed"></div>
-    </section>
-  </main>
+<input type="file" id="fileInput">
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } 
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+<script type="module">
+  import { getStorage, ref, uploadBytes, getDownloadURL } 
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
-      authDomain: "miredsocial-b50ce.firebaseapp.com",
-      projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.appspot.com",  // ✅ corregido
-      messagingSenderId: "1087784350299",
-      appId: "1:1087784350299:web:4c6b960635700994ef457e",
-      measurementId: "G-97HJGYQX6B"
-    };
+  const storage = getStorage(app);
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    const storage = getStorage(app);
+  // 🔹 Publicar con archivo
+  async function publishPost() {
+    const content = document.getElementById("postContent").value.trim();
+    const file = document.getElementById("fileInput").files[0];
 
-    let currentUser;
+    let fileURL = null;
 
-    // 🔹 Revisar sesión
-    onAuthStateChanged(auth, (user) => {
-      if(user){
-        currentUser = user;
-        loadPosts();
-      } else {
-        window.location.href = "index.html";
-      }
+    if (file) {
+      const storageRef = ref(storage, `uploads/${Date.now()}-${file.name}`);
+      await uploadBytes(storageRef, file);
+      fileURL = await getDownloadURL(storageRef);
+    }
+
+    if (content === "" && !fileURL) return;
+
+    await addDoc(collection(db, "posts"), {
+      uid: currentUser.uid,
+      content: content,
+      fileURL: fileURL,
+      timestamp: serverTimestamp()
     });
 
-    // 🔹 Publicar con texto y archivo
-    async function publishPost(){
-      const content = document.getElementById("postContent").value.trim();
-      const file = document.getElementById("fileInput").files[0];
-      if(content === "" && !file) return;
+    document.getElementById("postContent").value = "";
+    document.getElementById("fileInput").value = "";
+  }
+  window.publishPost = publishPost;
 
-      let fileUrl = null;
-      let fileType = null;
+  // 🔹 Mostrar publicaciones en tiempo real
+  function loadPosts() {
+    const q = query(collection(db, "posts"), orderBy("timestamp", "desc"));
+    onSnapshot(q, (snapshot) => {
+      const feedDiv = document.getElementById("feed");
+      feedDiv.innerHTML = "";
+      snapshot.forEach(doc => {
+        const post = doc.data();
+        const div = document.createElement("div");
+        div.classList.add("post");
 
-      if(file){
-        const fileRef = ref(storage, "posts/" + Date.now() + "-" + file.name);
-        await uploadBytes(fileRef, file);
-        fileUrl = await getDownloadURL(fileRef);
-        fileType = file.type.startsWith("image/") ? "image" : "file";
-      }
-
-      await addDoc(collection(db, "posts"), {
-        uid: currentUser.uid,
-        content: content,
-        fileUrl: fileUrl,
-        fileType: fileType,
-        timestamp: serverTimestamp()
-      });
-
-      document.getElementById("postContent").value = "";
-      document.getElementById("fileInput").value = "";
-    }
-    window.publishPost = publishPost;
-
-    // 🔹 Mostrar publicaciones en tiempo real
-    function loadPosts(){
-      const q = query(collection(db, "posts"), orderBy("timestamp","desc"));
-      onSnapshot(q, async (snapshot) => {
-        const feedDiv = document.getElementById("feed");
-        feedDiv.innerHTML = "";
-        for (const docSnap of snapshot.docs) {
-          const post = docSnap.data();
-
-          // obtener nombre del usuario
-          let username = "Usuario";
-          if(post.uid){
-            const userDoc = await getDoc(doc(db, "users", post.uid));
-            if(userDoc.exists()){
-              username = userDoc.data().nombre || "Usuario";
-            }
+        let fileHTML = "";
+        if (post.fileURL) {
+          if (post.fileURL.match(/\.(jpeg|jpg|gif|png)$/i)) {
+            fileHTML = `<img src="${post.fileURL}" style="max-width:100%; border-radius:8px; margin-top:10px;">`;
+          } else {
+            fileHTML = `<a href="${post.fileURL}" target="_blank">📎 Descargar archivo</a>`;
           }
-
-          const div = document.createElement("div");
-          div.classList.add("post");
-          div.innerHTML = `
-            <p><strong>${username}</strong></p>
-            <p>${post.content || ""}</p>
-            ${post.fileUrl ? (post.fileType === "image" 
-              ? `<img src="${post.fileUrl}" alt="Imagen">` 
-              : `<a href="${post.fileUrl}" target="_blank">📎 Descargar archivo</a>`) 
-              : ""}
-            <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
-          `;
-          feedDiv.appendChild(div);
         }
-      });
-    }
 
-    // 🔹 Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      signOut(auth).then(() => {
-        window.location.href = "index.html";
+        div.innerHTML = `
+          <p><strong style="color:#0af">${post.uid}</strong></p>
+          <p>${post.content || ""}</p>
+          ${fileHTML}
+          <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
+        `;
+        feedDiv.appendChild(div);
       });
     });
-  </script>
-</body>
-</html>
+  }
+</script>
+
 
 
