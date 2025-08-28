@@ -3,65 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Red Social - Inicio</title>
-  <style>
-    body {
-      font-family: 'Poppins', sans-serif;
-      background: linear-gradient(135deg, #0d0d0f, #1a1a1d, #2a2a2f);
-      color: #fff;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-    }
-    .profile {
-      background: rgba(30, 30, 35, 0.95);
-      padding: 30px;
-      border-radius: 20px;
-      box-shadow: 0 0 25px rgba(255, 255, 255, 0.1);
-      text-align: center;
-      width: 400px;
-    }
-    h2 {
-      margin-bottom: 15px;
-      color: #cfcfcf;
-      text-shadow: 0 0 5px #777;
-    }
-    p {
-      font-size: 14px;
-      color: #bbb;
-    }
-    button {
-      margin-top: 20px;
-      padding: 12px 20px;
-      border: none;
-      border-radius: 10px;
-      background: linear-gradient(90deg, #00c6ff, #0072ff);
-      color: white;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      box-shadow: 0 0 10px rgba(0, 198, 255, 0.6);
-      transition: transform 0.2s ease;
-    }
-    button:hover {
-      transform: scale(1.05);
-    }
-  </style>
+  <title>Mi Red Social - Home</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="profile">
-    <h2>Bienvenido <span id="usernameDisplay"></span> 👋</h2>
-    <p>Tu correo: <strong id="emailDisplay"></strong></p>
-    <button onclick="logout()">Cerrar sesión</button>
-  </div>
+  <header>
+    <h2>Mi Red Social</h2>
+    <nav>
+      <a href="home.html">Home</a>
+      <a href="chat.html">Chat</a>
+      <a href="#" onclick="logout()">Salir</a>
+    </nav>
+  </header>
+
+  <section id="newPost">
+    <textarea id="postText" placeholder="¿Qué estás pensando?"></textarea>
+    <button onclick="addPost()">Publicar</button>
+  </section>
+
+  <section id="feed">
+    <h3>Publicaciones</h3>
+    <div id="posts"></div>
+  </section>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signOut } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { initializeApp } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
@@ -77,30 +48,40 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    const usernameDisplay = document.getElementById("usernameDisplay");
-    const emailDisplay = document.getElementById("emailDisplay");
-
-    // Si no hay sesión, vuelve al login
-    onAuthStateChanged(auth, async (user) => {
-      if(user){
-        const ref = doc(db, "users", user.uid);
-        const snap = await getDoc(ref);
-        if(snap.exists()){
-          usernameDisplay.textContent = snap.data().username || "Usuario";
-          emailDisplay.textContent = snap.data().email || user.email;
-        } else {
-          usernameDisplay.textContent = "Usuario";
-          emailDisplay.textContent = user.email;
-        }
-      } else {
-        window.location.href = "index.html";
-      }
+    onAuthStateChanged(auth, (user) => {
+      if(!user) window.location.href = "index.html";
     });
 
-    window.logout = async function(){
+    async function addPost(){
+      const text = document.getElementById("postText").value;
+      if(text.trim() === "") return;
+      await addDoc(collection(db, "posts"), {
+        text,
+        user: auth.currentUser.email,
+        time: Date.now()
+      });
+      document.getElementById("postText").value = "";
+    }
+    window.addPost = addPost;
+
+    function loadPosts(){
+      const q = query(collection(db, "posts"), orderBy("time", "desc"));
+      onSnapshot(q, (snapshot) => {
+        const div = document.getElementById("posts");
+        div.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const p = docSnap.data();
+          div.innerHTML += `<div class="post"><b>${p.user}</b>: ${p.text}</div>`;
+        });
+      });
+    }
+    loadPosts();
+
+    async function logout(){
       await signOut(auth);
       window.location.href = "index.html";
     }
+    window.logout = logout;
   </script>
 </body>
 </html>
