@@ -5,100 +5,121 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reels - Mi Red Social</title>
   <style>
-    body, html {
+    body {
       margin: 0;
       padding: 0;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-      background: black;
       font-family: Arial, sans-serif;
-    }
-    .reel-container {
+      background: black;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       height: 100vh;
+    }
+
+    .upload-container {
+      position: fixed;
+      top: 10px;
       width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    input[type="file"] {
+      background: #222;
+      padding: 8px;
+      border-radius: 8px;
+      color: white;
+    }
+
+    button {
+      padding: 8px 15px;
+      border: none;
+      border-radius: 8px;
+      background: #ff0050;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    .reels-container {
+      margin-top: 60px;
+      width: 100%;
+      height: calc(100vh - 60px);
       overflow-y: scroll;
       scroll-snap-type: y mandatory;
     }
+
     .reel {
-      height: 100vh;
       width: 100%;
-      scroll-snap-align: start;
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      background: black;
+      scroll-snap-align: start;
     }
-    video, img {
+
+    video {
       max-height: 100%;
       max-width: 100%;
-    }
-    .upload-box {
-      position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(255,255,255,0.1);
-      padding: 10px;
-      border-radius: 10px;
-      z-index: 1000;
-    }
-    .upload-box input {
-      color: white;
+      border-radius: 15px;
     }
   </style>
 </head>
 <body>
-  <!-- Caja de subir archivos -->
-  <div class="upload-box">
-    <input type="file" id="fileInput" accept="video/*,image/*">
+
+  <!-- Subida -->
+  <div class="upload-container">
+    <input type="file" id="fileInput" accept="video/*">
     <button onclick="uploadFile()">Publicar</button>
   </div>
 
-  <!-- Contenedor de reels -->
-  <div class="reel-container" id="reelContainer">
-    <!-- Aquí se insertan los reels -->
-  </div>
+  <!-- Reels -->
+  <div class="reels-container" id="reelsContainer"></div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.7/axios.min.js"></script>
   <script>
-    const cloudName = "dbgpwpwrb"; // 👈 tu cloud name
-    const uploadPreset = "Mis_reels"; // 👈 tu upload preset
+    const CLOUD_NAME = "TU_CLOUD_NAME"; // 👈 pon tu cloud name
+    const UPLOAD_PRESET = "Mis_reels"; // 👈 tu preset
 
     async function uploadFile() {
-      const fileInput = document.getElementById("fileInput");
-      const file = fileInput.files[0];
+      const file = document.getElementById("fileInput").files[0];
       if (!file) {
-        alert("Selecciona un archivo primero");
+        alert("Selecciona un video primero");
         return;
       }
 
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("upload_preset", uploadPreset);
+      formData.append("upload_preset", UPLOAD_PRESET);
 
       try {
-        const res = await axios.post(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, formData);
-        addReel(res.data.secure_url, file.type);
-      } catch (err) {
-        alert("Error al subir el archivo");
-        console.error(err);
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, {
+          method: "POST",
+          body: formData
+        });
+
+        const data = await response.json();
+        if (data.secure_url) {
+          addReel(data.secure_url);
+        } else {
+          alert("Error al subir el archivo");
+          console.error(data);
+        }
+      } catch (error) {
+        alert("Error en la conexión");
+        console.error(error);
       }
     }
 
-    function addReel(url, type) {
-      const container = document.getElementById("reelContainer");
+    function addReel(url) {
+      const container = document.getElementById("reelsContainer");
       const reel = document.createElement("div");
       reel.classList.add("reel");
-
-      if (type.startsWith("video")) {
-        reel.innerHTML = `<video src="${url}" controls autoplay loop muted></video>`;
-      } else {
-        reel.innerHTML = `<img src="${url}" alt="reel">`;
-      }
-
-      container.insertBefore(reel, container.firstChild);
+      reel.innerHTML = `<video src="${url}" controls autoplay loop></video>`;
+      container.prepend(reel); // aparece arriba como TikTok
     }
   </script>
+
 </body>
 </html>
