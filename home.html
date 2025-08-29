@@ -11,6 +11,7 @@
       color: #eee;
       margin: 0;
       padding: 0;
+      display: flex;
     }
     header {
       background: linear-gradient(90deg, #222, #444);
@@ -19,6 +20,7 @@
       font-size: 22px;
       font-weight: bold;
       color: #fff;
+      width: 100%;
     }
     nav {
       background: #222;
@@ -35,7 +37,6 @@
     nav a:hover {
       color: #fff;
     }
-    /* 🔴 Burbuja de notificación */
     #chatNotif {
       display: none;
       background: red;
@@ -48,7 +49,14 @@
       right: -14px;
     }
     main {
+      flex: 1;
       padding: 20px;
+    }
+    aside {
+      width: 220px;
+      background: #1c1c1c;
+      padding: 15px;
+      border-left: 2px solid #333;
     }
     .post-box {
       background: #222;
@@ -99,36 +107,72 @@
       border-radius: 6px;
       margin-top: 10px;
     }
+    .reactions button {
+      margin-right: 5px;
+      font-size: 14px;
+      background: #333;
+    }
+    /* Perfil */
+    #profile {
+      position: absolute;
+      top: 15px;
+      right: 20px;
+      background: #222;
+      padding: 10px;
+      border-radius: 8px;
+      color: #fff;
+    }
+    /* Dark/Light mode */
+    .light {
+      background: #f4f4f4;
+      color: #111;
+    }
+    .light nav, .light header, .light aside {
+      background: #ddd;
+      color: #111;
+    }
+    .light .post {
+      background: #fff;
+      color: #000;
+    }
   </style>
 </head>
 <body>
-  <header>hablen pe chubeibis - Chat Global</header>
-  <nav>
-    <a href="home.html">Inicio</a>
-    <a href="reels.html">Subir Reels</a>
-    <a href="feed.html">Ver Reels</a>
-    <!-- 🔴 Aquí está la burbuja bien puesta -->
-    <a href="chat.html" id="chatLink">Chat <span id="chatNotif">0</span></a>
-    <a href="#" id="logoutBtn">Salir</a>
-  </nav>
-  <main>
-    <section class="post-box">
-      <h2>Chat Global</h2>
-      <textarea id="postContent" rows="3" placeholder="Escribe un mensaje..."></textarea>
-      <input type="file" id="fileInput">
-      <button onclick="publishPost()">Enviar mensaje</button>
-    </section>
-    <section>
-      <h2>Mensajes</h2>
-      <div id="feed"></div>
-    </section>
-  </main>
+  <div style="flex:1;">
+    <header>
+      hablen pe chubeibis - Chat Global
+      <div id="profile">👤 Cargando...</div>
+    </header>
+    <nav>
+      <a href="home.html">Inicio</a>
+      <a href="reels.html">Subir Reels</a>
+      <a href="feed.html">Ver Reels</a>
+      <a href="chat.html" id="chatLink">Chat <span id="chatNotif">0</span></a>
+      <a href="#" id="toggleMode">🌙</a>
+      <a href="#" id="logoutBtn">Salir</a>
+    </nav>
+    <main>
+      <h2 id="welcome">Bienvenido</h2>
+      <section class="post-box">
+        <textarea id="postContent" rows="3" placeholder="Escribe un mensaje..."></textarea>
+        <input type="file" id="fileInput">
+        <button onclick="publishPost()">Enviar mensaje</button>
+      </section>
+      <section>
+        <h2>Mensajes</h2>
+        <div id="feed"></div>
+      </section>
+    </main>
+  </div>
+  <aside>
+    <h3>🟢 Usuarios en línea</h3>
+    <ul id="userList"></ul>
+  </aside>
 
   <script type="module">
-    /* ----------------- Firebase ----------------- */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -137,137 +181,109 @@
       projectId: "miredsocial-b50ce",
       storageBucket: "miredsocial-b50ce.appspot.com",
       messagingSenderId: "1087784350299",
-      appId: "1:1087784350299:web:4c6b960635700994ef457e",
-      measurementId: "G-97HJGYQX6B"
+      appId: "1:1087784350299:web:4c6b960635700994ef457e"
     };
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    /* ----------------- Supabase ----------------- */
     import { createClient } from "https://esm.sh/@supabase/supabase-js";
-
-    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = createClient("https://klziukovalzzcinifvaw.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...");
 
     let currentUser;
 
-    // Revisar sesión
-    onAuthStateChanged(auth, (user) => {
+    onAuthStateChanged(auth, async (user) => {
       if(user){
         currentUser = user;
+        document.getElementById("profile").innerText = "👤 " + (user.email || "Usuario");
+        document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || "Usuario");
+        await setDoc(doc(db,"onlineUsers",user.uid),{
+          email:user.email, lastActive:serverTimestamp()
+        });
         loadPosts();
-        monitorPrivateChat(); // 👈 activar notificaciones de privados
+        loadUsers();
+        monitorPrivateChat();
       } else {
         window.location.href = "index.html";
       }
     });
 
-    // 📌 Enviar mensaje global
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
-      const file = document.getElementById("fileInput").files[0];
-      if(content === "" && !file) return;
-
-      let fileUrl = null;
-      let fileType = null;
-
-      if(file){
-        const filePath = `archivos/${Date.now()}-${file.name}`;
-
-        const { data, error } = await supabase.storage
-          .from("Chat")
-          .upload(filePath, file, { cacheControl: "3600", upsert: false });
-
-        if(error){
-          alert("Error subiendo archivo: " + error.message);
-          return;
-        }
-
-        const { data: publicData } = supabase.storage
-          .from("Chat")
-          .getPublicUrl(filePath);
-
-        fileUrl = publicData.publicUrl;
-        fileType = file.type.startsWith("image/") ? "image" : "file";
-      }
-
-      await addDoc(collection(db, "chat"), {
-        uid: currentUser.uid,
-        content: content,
-        fileUrl: fileUrl,
-        fileType: fileType,
-        timestamp: serverTimestamp()
+      if(content==="") return;
+      await addDoc(collection(db,"chat"),{
+        uid:currentUser.uid, content, timestamp:serverTimestamp()
       });
-
-      document.getElementById("postContent").value = "";
-      document.getElementById("fileInput").value = "";
+      document.getElementById("postContent").value="";
     }
-    window.publishPost = publishPost;
+    window.publishPost=publishPost;
 
-    // 📌 Mostrar mensajes globales en tiempo real
     function loadPosts(){
-      const q = query(collection(db, "chat"), orderBy("timestamp","desc"));
-      onSnapshot(q, async (snapshot) => {
-        const feedDiv = document.getElementById("feed");
-        feedDiv.innerHTML = "";
-        for (const docSnap of snapshot.docs) {
-          const post = docSnap.data();
-
-          let username = "Usuario";
+      const q=query(collection(db,"chat"),orderBy("timestamp","desc"));
+      onSnapshot(q, async(snapshot)=>{
+        const feedDiv=document.getElementById("feed");
+        feedDiv.innerHTML="";
+        for(const docSnap of snapshot.docs){
+          const post=docSnap.data();
+          let username="Usuario";
           if(post.uid){
-            const userDoc = await getDoc(doc(db, "users", post.uid));
-            if(userDoc.exists()){
-              username = userDoc.data().nombre || "Usuario";
-            }
+            const userDoc=await getDoc(doc(db,"users",post.uid));
+            if(userDoc.exists()) username=userDoc.data().nombre||"Usuario";
           }
-
-          const div = document.createElement("div");
+          const div=document.createElement("div");
           div.classList.add("post");
-          div.innerHTML = `
+          div.innerHTML=`
             <p><strong>${username}</strong></p>
-            <p>${post.content || ""}</p>
-            ${post.fileUrl ? (post.fileType === "image" 
-              ? `<img src="${post.fileUrl}" alt="Imagen">` 
-              : `<a href="${post.fileUrl}" target="_blank">📎 Descargar archivo</a>`) 
-              : ""}
-            <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
-          `;
+            <p>${post.content||""}</p>
+            <div class="reactions">
+              <button onclick="alert('👍 Like!')">👍</button>
+              <button onclick="alert('😂 Jaja!')">😂</button>
+              <button onclick="alert('❤️ Love!')">❤️</button>
+            </div>
+            <small>${post.timestamp?post.timestamp.toDate().toLocaleString():""}</small>`;
           feedDiv.appendChild(div);
         }
       });
     }
 
-    // 📌 Notificación de mensajes privados
-    function monitorPrivateChat() {
-      const chatNotif = document.getElementById("chatNotif");
-      const q = query(collection(db, "privateChat"), orderBy("timestamp", "desc"));
-
-      onSnapshot(q, (snapshot) => {
-        let unreadCount = 0;
-        snapshot.docs.forEach((docSnap) => {
-          const msg = docSnap.data();
-          if (msg.uid !== currentUser.uid && !msg.readBy?.includes(currentUser.uid)) {
-            unreadCount++;
-          }
+    function loadUsers(){
+      const q=query(collection(db,"onlineUsers"));
+      onSnapshot(q,(snapshot)=>{
+        const list=document.getElementById("userList");
+        list.innerHTML="";
+        snapshot.docs.forEach(d=>{
+          const data=d.data();
+          const li=document.createElement("li");
+          li.innerText=data.email;
+          list.appendChild(li);
         });
-
-        if (unreadCount > 0) {
-          chatNotif.style.display = "inline-block";
-          chatNotif.textContent = unreadCount;
-        } else {
-          chatNotif.style.display = "none";
-        }
       });
     }
 
-    // Logout
-    document.getElementById("logoutBtn").addEventListener("click", () => {
-      signOut(auth).then(() => {
-        window.location.href = "index.html";
+    function monitorPrivateChat(){
+      const chatNotif=document.getElementById("chatNotif");
+      const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+      onSnapshot(q,(snapshot)=>{
+        let unread=0;
+        snapshot.docs.forEach(docSnap=>{
+          const msg=docSnap.data();
+          if(msg.uid!==currentUser.uid) unread++;
+        });
+        if(unread>0){
+          chatNotif.style.display="inline-block";
+          chatNotif.textContent=unread;
+        } else chatNotif.style.display="none";
       });
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click",()=>{
+      signOut(auth).then(()=>window.location.href="index.html");
+    });
+
+    document.getElementById("toggleMode").addEventListener("click",()=>{
+      document.body.classList.toggle("light");
     });
   </script>
 </body>
