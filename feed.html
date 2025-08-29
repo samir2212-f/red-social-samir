@@ -19,37 +19,64 @@
       width:50px; height:50px; color:white; font-size:22px; cursor:pointer;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div id="feed"></div>
 
   <script>
-    const reels = JSON.parse(localStorage.getItem("reels")) || [];
-    const feed = document.getElementById("feed");
+    // Configuración de tu Supabase
+    const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-    reels.forEach(url => {
-      let reel = document.createElement("div");
-      reel.className = "reel";
+    const bucketName = "videos";
 
-      reel.innerHTML = `
-        <video src="${url}" controls loop></video>
-        <div class="actions">
-          <button>❤️</button>
-          <button>💬</button>
-          <button>🔗</button>
-        </div>
-      `;
-      feed.appendChild(reel);
-    });
+    async function loadFeed() {
+      const { data, error } = await supabaseClient.storage.from(bucketName).list("", {
+        limit: 50,
+        offset: 0
+      });
 
-    // Scroll tipo TikTok
-    let current = 0;
-    window.addEventListener("wheel", e => {
-      if(e.deltaY > 0 && current < reels.length-1) current++;
-      else if(e.deltaY < 0 && current > 0) current--;
-      feed.style.transform = `translateY(-${current*100}vh)`;
-      feed.style.transition = "0.6s";
-    });
+      if (error) {
+        console.error("Error al cargar feed:", error);
+        return;
+      }
+
+      const feed = document.getElementById("feed");
+      feed.innerHTML = "";
+
+      for (let file of data.reverse()) { // 👈 mostrar los últimos primero
+        const { data: urlData } = await supabaseClient
+          .storage
+          .from(bucketName)
+          .getPublicUrl(file.name);
+
+        let reel = document.createElement("div");
+        reel.className = "reel";
+
+        reel.innerHTML = `
+          <video src="${urlData.publicUrl}" controls loop></video>
+          <div class="actions">
+            <button>❤️</button>
+            <button>💬</button>
+            <button>🔗</button>
+          </div>
+        `;
+        feed.appendChild(reel);
+      }
+
+      // Scroll tipo TikTok
+      let current = 0;
+      window.addEventListener("wheel", e => {
+        if(e.deltaY > 0 && current < feed.children.length-1) current++;
+        else if(e.deltaY < 0 && current > 0) current--;
+        feed.style.transform = `translateY(-${current*100}vh)`;
+        feed.style.transition = "0.6s";
+      });
+    }
+
+    loadFeed();
   </script>
 </body>
 </html>
