@@ -5,6 +5,9 @@
   <title>Reels</title>
   <style>
     body { margin:0; background:black; overflow:hidden; }
+    #feed {
+      transition: transform 0.6s;
+    }
     .reel {
       position:relative; height:100vh; width:100%;
       display:flex; justify-content:center; align-items:center;
@@ -32,6 +35,7 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const feed = document.getElementById("feed");
+    let current = 0;
 
     // ⚡ Traer todos los videos del bucket Samir
     async function loadReels() {
@@ -46,16 +50,18 @@
       }
 
       for (let file of data) {
-        const { data: publicUrl } = supabase
+        const { data: urlData } = supabase
           .storage
           .from("Samir")
           .getPublicUrl(file.name);
+
+        const fileUrl = urlData.publicUrl;
 
         let reel = document.createElement("div");
         reel.className = "reel";
 
         reel.innerHTML = `
-          <video src="${publicUrl.publicUrl}" controls loop></video>
+          <video src="${fileUrl}" loop></video>
           <div class="actions">
             <button>❤️</button>
             <button>💬</button>
@@ -64,18 +70,59 @@
         `;
         feed.appendChild(reel);
       }
+
+      // Reproducir el primer reel al cargar
+      playCurrentReel();
     }
 
     loadReels();
 
-    // Scroll tipo TikTok
-    let current = 0;
+    // 👉 Función para mostrar y reproducir solo el reel actual
+    function showReel(index) {
+      const reels = document.querySelectorAll(".reel");
+      if (index >= 0 && index < reels.length) {
+        current = index;
+        feed.style.transform = `translateY(-${current * 100}vh)`;
+        playCurrentReel();
+      }
+    }
+
+    // 👉 Reproduce solo el reel actual y pausa los demás
+    function playCurrentReel() {
+      const videos = document.querySelectorAll("video");
+      videos.forEach((video, i) => {
+        if (i === current) {
+          video.play();
+        } else {
+          video.pause();
+          video.currentTime = 0; // opcional: reinicia al principio
+        }
+      });
+    }
+
+    // Scroll con rueda en PC
     window.addEventListener("wheel", e => {
       const reels = document.querySelectorAll(".reel");
-      if(e.deltaY > 0 && current < reels.length-1) current++;
-      else if(e.deltaY < 0 && current > 0) current--;
-      feed.style.transform = `translateY(-${current*100}vh)`;
-      feed.style.transition = "0.6s";
+      if (e.deltaY > 0 && current < reels.length - 1) showReel(current + 1);
+      else if (e.deltaY < 0 && current > 0) showReel(current - 1);
+    });
+
+    // 👉 Swipe en celular
+    let startY = 0;
+
+    window.addEventListener("touchstart", e => {
+      startY = e.touches[0].clientY;
+    });
+
+    window.addEventListener("touchend", e => {
+      let endY = e.changedTouches[0].clientY;
+      let diff = startY - endY;
+
+      if (diff > 50) {
+        showReel(current + 1); // subir → siguiente reel
+      } else if (diff < -50) {
+        showReel(current - 1); // bajar → reel anterior
+      }
     });
   </script>
 </body>
