@@ -44,6 +44,7 @@
       transform: scale(1.1);
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="upload-box">
@@ -54,6 +55,13 @@
   </div>
 
   <script>
+    // Configuración de tu Supabase
+    const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
+    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    const bucketName = "videos"; // 👈 asegúrate que en Supabase creaste este bucket y que es público
+
     async function uploadVideo() {
       const file = document.getElementById("videoInput").files[0];
       if (!file) {
@@ -61,40 +69,22 @@
         return;
       }
 
-      const cloudName = "dbgpvwprb"; // 👈 tu cloud name
-      const preset = "Mis_reels";    // 👈 tu upload preset unsigned
+      const fileName = `${Date.now()}_${file.name}`;
 
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("upload_preset", preset);
+      const { data, error } = await supabaseClient.storage
+        .from(bucketName)
+        .upload(fileName, file);
 
-      try {
-        // ⚡ endpoint correcto para videos
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
-          method: "POST",
-          body: formData
-        });
-
-        const data = await res.json();
-        console.log(data);
-
-        if (data.secure_url) {
-          alert("✅ Video publicado con éxito");
-
-          // Guardamos la URL en localStorage
-          let reels = JSON.parse(localStorage.getItem("reels")) || [];
-          reels.push(data.secure_url);
-          localStorage.setItem("reels", JSON.stringify(reels));
-
-          // Redirige automáticamente al feed
-          window.location.href = "feed.html";
-        } else {
-          alert("❌ Error al subir el video");
-        }
-      } catch (error) {
+      if (error) {
         console.error(error);
-        alert("⚠️ Hubo un problema con la subida");
+        alert("❌ Error al subir el video");
+        return;
       }
+
+      alert("✅ Video publicado con éxito");
+
+      // redirige al feed
+      window.location.href = "feed.html";
     }
   </script>
 </body>
