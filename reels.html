@@ -2,59 +2,96 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subir Reels</title>
   <style>
-    body { background:black; color:white; text-align:center; font-family:sans-serif; }
-    .btn {
-      background: linear-gradient(to right, #ff0050, #00f2ea);
-      color:white; padding:10px 20px; border:none; border-radius:20px;
-      margin:10px; cursor:pointer; font-size:16px;
+    body {
+      font-family: Arial, sans-serif;
+      background: #121212;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
     }
-    video { width:300px; border-radius:12px; margin:20px auto; display:block; }
+
+    .upload-box {
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 15px;
+      text-align: center;
+      box-shadow: 0 0 15px rgba(255, 0, 100, 0.5);
+    }
+
+    input[type="file"] {
+      margin: 15px 0;
+    }
+
+    button {
+      background: linear-gradient(45deg, #ff0050, #00f2ea);
+      border: none;
+      padding: 10px 20px;
+      border-radius: 30px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s ease;
+    }
+
+    button:hover {
+      transform: scale(1.1);
+    }
   </style>
 </head>
 <body>
-  <h2>📹 Subir Reels</h2>
-  <input type="file" id="videoInput" accept="video/*" style="display:none">
-  <button class="btn" onclick="document.getElementById('videoInput').click()">🎬 Seleccionar Video</button>
-  <br>
-  <video id="preview" controls></video>
-  <br>
-  <button class="btn" onclick="uploadVideo()">⬆️ Publicar</button>
+  <div class="upload-box">
+    <h2>🎬 Subir Reels</h2>
+    <input type="file" id="videoInput" accept="video/*">
+    <br>
+    <button onclick="uploadVideo()">📤 Publicar</button>
+  </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <script>
-    let selectedFile;
-    const videoInput = document.getElementById('videoInput');
-    const preview = document.getElementById('preview');
-
-    videoInput.addEventListener('change', e => {
-      selectedFile = e.target.files[0];
-      preview.src = URL.createObjectURL(selectedFile);
-    });
-
     async function uploadVideo() {
-      if(!selectedFile) return alert("Selecciona un video primero");
+      const file = document.getElementById("videoInput").files[0];
+      if (!file) {
+        alert("Por favor selecciona un video");
+        return;
+      }
 
-      let formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("upload_preset", "ml_default"); // tu preset de Cloudinary
+      const cloudName = "dbgpvwprb"; // 👈 tu cloud name
+      const preset = "Mis_reels";    // 👈 tu upload preset unsigned
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", preset);
 
       try {
-        let res = await axios.post("https://api.cloudinary.com/v1_1/dbgpvwprb/video/upload", formData);
-        let videoUrl = res.data.secure_url;
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+          method: "POST",
+          body: formData
+        });
 
-        // Guardar en localStorage
-        let reels = JSON.parse(localStorage.getItem("reels")) || [];
-        reels.push(videoUrl);
-        localStorage.setItem("reels", JSON.stringify(reels));
+        const data = await res.json();
+        console.log(data);
 
-        // ✅ Enviar directo a feed
-        window.location.href = "feed.html";
+        if (data.secure_url) {
+          alert("✅ Video publicado con éxito");
+          // Guardamos en localStorage para el feed
+          let reels = JSON.parse(localStorage.getItem("reels")) || [];
+          reels.push(data.secure_url);
+          localStorage.setItem("reels", JSON.stringify(reels));
 
-      } catch(err) {
-        console.error(err);
-        alert("Error subiendo el video");
+          // Redirige automáticamente al feed
+          window.location.href = "feed.html";
+        } else {
+          alert("❌ Error al subir el video");
+        }
+      } catch (error) {
+        console.error(error);
+        alert("⚠️ Hubo un problema con la subida");
       }
     }
   </script>
