@@ -3,142 +3,215 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mi Red Social</title>
+  <title>Red Social - Home</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #222;
-      color: white;
+      background: #111;
+      color: #eee;
       margin: 0;
       padding: 0;
     }
     header {
-      background: #111;
+      background: linear-gradient(90deg, #222, #444);
       padding: 15px;
       text-align: center;
-      font-size: 20px;
+      font-size: 22px;
+      font-weight: bold;
+      color: #fff;
+    }
+    nav {
+      background: #222;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+    }
+    nav a {
+      color: #ccc;
+      text-decoration: none;
       font-weight: bold;
     }
-    .container {
-      width: 600px;
-      margin: 20px auto;
-      background: #1a1a1a;
+    nav a:hover {
+      color: #fff;
+    }
+    main {
+      padding: 20px;
+    }
+    .post-box {
+      background: #222;
       padding: 15px;
       border-radius: 8px;
+      margin-bottom: 20px;
     }
     textarea, input[type="file"] {
       width: 100%;
-      margin: 10px 0;
       padding: 10px;
-      border-radius: 5px;
+      border-radius: 8px;
       border: none;
+      outline: none;
+      resize: none;
+      background: #333;
+      color: #eee;
+      margin-bottom: 10px;
     }
     button {
-      background: #0099ff;
+      margin-top: 10px;
+      padding: 10px 15px;
       border: none;
-      padding: 10px 20px;
-      color: white;
-      border-radius: 5px;
+      border-radius: 6px;
+      background: #0af;
+      color: #fff;
       cursor: pointer;
     }
     button:hover {
-      background: #007acc;
+      background: #09c;
     }
     .post {
-      background: #333;
-      margin: 15px 0;
-      padding: 10px;
-      border-radius: 5px;
+      background: #1a1a1a;
+      margin-bottom: 15px;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0px 0px 5px rgba(255,255,255,0.1);
+    }
+    .post strong {
+      color: #0af;
+    }
+    .post small {
+      display: block;
+      color: #888;
+      margin-top: 5px;
     }
     .post img {
       max-width: 100%;
+      border-radius: 6px;
       margin-top: 10px;
-      border-radius: 5px;
     }
   </style>
 </head>
 <body>
-  <header>Mi Red Social</header>
-  <div class="container">
-    <h2>Crear publicación</h2>
-    <textarea id="postContent" placeholder="¿Qué estás pensando?"></textarea>
-    <input type="file" id="fileInput">
-    <button onclick="publishPost()">Publicar</button>
-  </div>
+  <header>Mi Red Social - Inicio</header>
+  <nav>
+    <a href="home.html">Inicio</a>
+    <a href="chat.html">Chat</a>
+    <a href="#" id="logoutBtn">Salir</a>
+  </nav>
+  <main>
+    <section class="post-box">
+      <h2>Crear publicación</h2>
+      <textarea id="postContent" rows="3" placeholder="¿Qué estás pensando?"></textarea>
+      <input type="file" id="fileInput">
+      <button onclick="publishPost()">Publicar</button>
+    </section>
+    <section>
+      <h2>Publicaciones</h2>
+      <div id="feed"></div>
+    </section>
+  </main>
 
-  <div class="container">
-    <h2>Publicaciones</h2>
-    <div id="posts"></div>
-  </div>
-
-  <!-- Firebase -->
   <script type="module">
-    // Importar Firebase
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
-    // Configuración de Firebase (pon tus credenciales aquí 👇)
     const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_AUTH_DOMAIN",
-      projectId: "TU_PROJECT_ID",
-      storageBucket: "TU_STORAGE_BUCKET",
-      messagingSenderId: "TU_SENDER_ID",
-      appId: "TU_APP_ID"
+      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+      authDomain: "miredsocial-b50ce.firebaseapp.com",
+      projectId: "miredsocial-b50ce",
+      storageBucket: "miredsocial-b50ce.appspot.com",  // ✅ corregido
+      messagingSenderId: "1087784350299",
+      appId: "1:1087784350299:web:4c6b960635700994ef457e",
+      measurementId: "G-97HJGYQX6B"
     };
 
     const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
     const db = getFirestore(app);
     const storage = getStorage(app);
 
-    async function publishPost() {
-      const content = document.getElementById("postContent").value;
-      const fileInput = document.getElementById("fileInput");
-      let fileURL = "";
+    let currentUser;
 
-      if (fileInput.files.length > 0) {
-        const file = fileInput.files[0];
-        const storageRef = ref(storage, "uploads/" + file.name);
-        await uploadBytes(storageRef, file);
-        fileURL = await getDownloadURL(storageRef);
+    // 🔹 Revisar sesión
+    onAuthStateChanged(auth, (user) => {
+      if(user){
+        currentUser = user;
+        loadPosts();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    // 🔹 Publicar con texto y archivo
+    async function publishPost(){
+      const content = document.getElementById("postContent").value.trim();
+      const file = document.getElementById("fileInput").files[0];
+      if(content === "" && !file) return;
+
+      let fileUrl = null;
+      let fileType = null;
+
+      if(file){
+        const fileRef = ref(storage, "posts/" + Date.now() + "-" + file.name);
+        await uploadBytes(fileRef, file);
+        fileUrl = await getDownloadURL(fileRef);
+        fileType = file.type.startsWith("image/") ? "image" : "file";
       }
 
       await addDoc(collection(db, "posts"), {
-        user: "Usuario", // aquí puedes poner el nombre real del usuario
+        uid: currentUser.uid,
         content: content,
-        file: fileURL,
-        date: new Date().toISOString()
+        fileUrl: fileUrl,
+        fileType: fileType,
+        timestamp: serverTimestamp()
       });
 
       document.getElementById("postContent").value = "";
-      fileInput.value = "";
-      loadPosts();
+      document.getElementById("fileInput").value = "";
     }
+    window.publishPost = publishPost;
 
-    async function loadPosts() {
-      const postsContainer = document.getElementById("posts");
-      postsContainer.innerHTML = "";
-      const q = query(collection(db, "posts"), orderBy("date", "desc"));
-      const snapshot = await getDocs(q);
+    // 🔹 Mostrar publicaciones en tiempo real
+    function loadPosts(){
+      const q = query(collection(db, "posts"), orderBy("timestamp","desc"));
+      onSnapshot(q, async (snapshot) => {
+        const feedDiv = document.getElementById("feed");
+        feedDiv.innerHTML = "";
+        for (const docSnap of snapshot.docs) {
+          const post = docSnap.data();
 
-      snapshot.forEach(doc => {
-        const post = doc.data();
-        const div = document.createElement("div");
-        div.className = "post";
-        div.innerHTML = `
-          <b>${post.user}</b><br>
-          <p>${post.content}</p>
-          ${post.file ? `<img src="${post.file}">` : ""}
-          <small>${new Date(post.date).toLocaleString()}</small>
-        `;
-        postsContainer.appendChild(div);
+          // obtener nombre del usuario
+          let username = "Usuario";
+          if(post.uid){
+            const userDoc = await getDoc(doc(db, "users", post.uid));
+            if(userDoc.exists()){
+              username = userDoc.data().nombre || "Usuario";
+            }
+          }
+
+          const div = document.createElement("div");
+          div.classList.add("post");
+          div.innerHTML = `
+            <p><strong>${username}</strong></p>
+            <p>${post.content || ""}</p>
+            ${post.fileUrl ? (post.fileType === "image" 
+              ? `<img src="${post.fileUrl}" alt="Imagen">` 
+              : `<a href="${post.fileUrl}" target="_blank">📎 Descargar archivo</a>`) 
+              : ""}
+            <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
+          `;
+          feedDiv.appendChild(div);
+        }
       });
     }
 
-    window.publishPost = publishPost; // 👈 hace accesible la función
-    loadPosts();
+    // 🔹 Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
+      });
+    });
   </script>
 </body>
 </html>
-
