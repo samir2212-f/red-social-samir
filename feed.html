@@ -19,44 +19,43 @@
       width:50px; height:50px; color:white; font-size:22px; cursor:pointer;
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div id="feed"></div>
 
+  <!-- SDK de Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script>
-    // Configuración de tu Supabase
-    const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+    // ⚡ Configuración Supabase
+    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const bucketName = "videos";
+    const feed = document.getElementById("feed");
 
-    async function loadFeed() {
-      const { data, error } = await supabaseClient.storage.from(bucketName).list("", {
-        limit: 50,
-        offset: 0
+    // ⚡ Traer todos los videos del bucket Samir
+    async function loadReels() {
+      const { data, error } = await supabase.storage.from("Samir").list("", {
+        limit: 100,
+        sortBy: { column: "created_at", order: "desc" }
       });
 
       if (error) {
-        console.error("Error al cargar feed:", error);
+        console.error("Error cargando videos:", error.message);
         return;
       }
 
-      const feed = document.getElementById("feed");
-      feed.innerHTML = "";
-
-      for (let file of data.reverse()) { // 👈 mostrar los últimos primero
-        const { data: urlData } = await supabaseClient
+      for (let file of data) {
+        const { data: publicUrl } = supabase
           .storage
-          .from(bucketName)
+          .from("Samir")
           .getPublicUrl(file.name);
 
         let reel = document.createElement("div");
         reel.className = "reel";
 
         reel.innerHTML = `
-          <video src="${urlData.publicUrl}" controls loop></video>
+          <video src="${publicUrl.publicUrl}" controls loop></video>
           <div class="actions">
             <button>❤️</button>
             <button>💬</button>
@@ -65,18 +64,19 @@
         `;
         feed.appendChild(reel);
       }
-
-      // Scroll tipo TikTok
-      let current = 0;
-      window.addEventListener("wheel", e => {
-        if(e.deltaY > 0 && current < feed.children.length-1) current++;
-        else if(e.deltaY < 0 && current > 0) current--;
-        feed.style.transform = `translateY(-${current*100}vh)`;
-        feed.style.transition = "0.6s";
-      });
     }
 
-    loadFeed();
+    loadReels();
+
+    // Scroll tipo TikTok
+    let current = 0;
+    window.addEventListener("wheel", e => {
+      const reels = document.querySelectorAll(".reel");
+      if(e.deltaY > 0 && current < reels.length-1) current++;
+      else if(e.deltaY < 0 && current > 0) current--;
+      feed.style.transform = `translateY(-${current*100}vh)`;
+      feed.style.transition = "0.6s";
+    });
   </script>
 </body>
 </html>
