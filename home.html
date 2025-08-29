@@ -86,19 +86,10 @@
       border-radius: 6px;
       margin-top: 10px;
     }
-    .post a {
-      display: inline-block;
-      margin-top: 10px;
-      color: #0af;
-      text-decoration: none;
-    }
-    .post a:hover {
-      text-decoration: underline;
-    }
   </style>
 </head>
 <body>
-  <header>Mi Red Social - Inicio</header>
+  <header>Mi Red Social - Chat Global</header>
   <nav>
     <a href="home.html">Inicio</a>
     <a href="reels.html">Subir Reels</a>
@@ -120,12 +111,11 @@
   </main>
 
   <script type="module">
+    /* ----------------- Firebase ----------------- */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getStorage, ref, uploadBytes, getDownloadURL } 
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
@@ -140,7 +130,13 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-    const storage = getStorage(app);
+
+    /* ----------------- Supabase ----------------- */
+    import { createClient } from "https://esm.sh/@supabase/supabase-js";
+
+    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser;
 
@@ -164,9 +160,23 @@
       let fileType = null;
 
       if(file){
-        const fileRef = ref(storage, "chat/" + Date.now() + "-" + file.name);
-        await uploadBytes(fileRef, file);
-        fileUrl = await getDownloadURL(fileRef);
+        // Subir archivo a Supabase (bucket Chat)
+        const fileName = Date.now() + "-" + file.name;
+        const { data, error } = await supabase.storage
+          .from("Chat")
+          .upload(fileName, file);
+
+        if(error){
+          alert("Error subiendo archivo: " + error.message);
+          return;
+        }
+
+        // Obtener URL pública
+        const { data: publicUrl } = supabase.storage
+          .from("Chat")
+          .getPublicUrl(fileName);
+
+        fileUrl = publicUrl.publicUrl;
         fileType = file.type.startsWith("image/") ? "image" : "file";
       }
 
@@ -205,7 +215,7 @@
           div.classList.add("post");
           div.innerHTML = `
             <p><strong>${username}</strong></p>
-            ${post.content ? `<p>${post.content}</p>` : ""}
+            <p>${post.content || ""}</p>
             ${post.fileUrl ? (post.fileType === "image" 
               ? `<img src="${post.fileUrl}" alt="Imagen">` 
               : `<a href="${post.fileUrl}" target="_blank">📎 Descargar archivo</a>`) 
