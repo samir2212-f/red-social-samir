@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reels</title>
+  <style>
+    body { margin:0; background:black; overflow:hidden; }
+    .reel {
+      position:relative; height:100vh; width:100%;
+      display:flex; justify-content:center; align-items:center;
+    }
+    video { height:100vh; width:100%; object-fit:cover; }
+    .actions {
+      position:absolute; right:15px; bottom:100px;
+      display:flex; flex-direction:column; gap:20px; font-size:22px; color:white;
+    }
+    .actions button {
+      background:rgba(0,0,0,0.5); border:none; border-radius:50%;
+      width:50px; height:50px; color:white; font-size:22px; cursor:pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="feed"></div>
+
+  <script>
+    const reels = JSON.parse(localStorage.getItem("reels")) || [];
+    const feed = document.getElementById("feed");
+
+    reels.forEach(url => {
+      let reel = document.createElement("div");
+      reel.className = "reel";
+
+      reel.innerHTML = `
+        <video src="${url}" controls loop></video>
+        <div class="actions">
+          <button>❤️</button>
+          <button>💬</button>
+          <button>🔗</button>
+        </div>
+      `;
+      feed.appendChild(reel);
+    });
+
+    // Scroll tipo TikTok
+    let current = 0;
+    window.addEventListener("wheel", e => {
+      if(e.deltaY > 0 && current < reels.length-1) current++;
+      else if(e.deltaY < 0 && current > 0) current--;
+      feed.style.transform = `translateY(-${current*100}vh)`;
+      feed.style.transition = "0.6s";
+    });
+  </script>
+</body>
+</html>
