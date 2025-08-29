@@ -44,7 +44,6 @@
       transform: scale(1.1);
     }
   </style>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="upload-box">
@@ -54,13 +53,13 @@
     <button onclick="uploadVideo()">📤 Publicar</button>
   </div>
 
+  <!-- SDK de Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script>
-    // Configuración de tu Supabase
-    const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
-    const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
-    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
-
-    const bucketName = "videos"; // 👈 asegúrate que en Supabase creaste este bucket y que es público
+    // ⚡ Configuración de tu proyecto Supabase
+    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co"; // 👈 tu URL
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4"; // 👈 tu anon key
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function uploadVideo() {
       const file = document.getElementById("videoInput").files[0];
@@ -69,22 +68,40 @@
         return;
       }
 
+      // nombre único para el archivo
       const fileName = `${Date.now()}_${file.name}`;
 
-      const { data, error } = await supabaseClient.storage
-        .from(bucketName)
-        .upload(fileName, file);
+      // subir al bucket Samir
+      const { data, error } = await supabase.storage
+        .from("Samir")
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: true
+        });
 
       if (error) {
-        console.error(error);
+        console.error("Error subiendo:", error.message);
         alert("❌ Error al subir el video");
         return;
       }
 
-      alert("✅ Video publicado con éxito");
+      // obtener URL pública
+      const { data: publicUrl } = supabase
+        .storage
+        .from("Samir")
+        .getPublicUrl(fileName);
 
-      // redirige al feed
-      window.location.href = "feed.html";
+      if (publicUrl.publicUrl) {
+        alert("✅ Video publicado con éxito");
+
+        // opcional: guardar la URL en localStorage para debug
+        let reels = JSON.parse(localStorage.getItem("reels")) || [];
+        reels.push(publicUrl.publicUrl);
+        localStorage.setItem("reels", JSON.stringify(reels));
+
+        // redirigir al feed
+        window.location.href = "feed.html";
+      }
     }
   </script>
 </body>
