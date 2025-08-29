@@ -92,6 +92,7 @@
   <header>Mi Red Social - Inicio</header>
   <nav>
     <a href="home.html">Inicio</a>
+    <a href="reels.html">Reels</a> <!-- 🔹 Nuevo botón agregado -->
     <a href="chat.html">Chat</a>
     <a href="#" id="logoutBtn">Salir</a>
   </nav>
@@ -172,7 +173,7 @@
     }
     window.publishPost = publishPost;
 
-    // 🔹 Mostrar publicaciones en tiempo real (orden de llegada = ascendente)
+    // 🔹 Mostrar publicaciones en tiempo real
     function loadPosts(){
       const q = query(collection(db, "posts"), orderBy("timestamp","asc"));  
       onSnapshot(q, async (snapshot) => {
