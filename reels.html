@@ -40,7 +40,7 @@
       }
 
       const file = fileInput.files[0];
-      const fileName = Date.now() + "-" + file.name; // nombre único
+      const fileName = "reels/" + Date.now() + "-" + file.name; // 👈 carpeta reels
 
       // 👇 Subir al bucket Samir
       const { data, error } = await supabase.storage
@@ -61,13 +61,8 @@
 
       console.log("✅ URL pública:", publicUrl.publicUrl);
 
-      // Guardar en localStorage para mostrarlo en feed.html
-      let reels = JSON.parse(localStorage.getItem("reels")) || [];
-      reels.push(publicUrl.publicUrl);
-      localStorage.setItem("reels", JSON.stringify(reels));
-
       alert("✅ Video subido correctamente");
-      window.location.href = "feed.html";
+      window.location.href = "feed.html"; // 👈 te manda al feed
     }
   </script>
 </body>
