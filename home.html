@@ -86,6 +86,15 @@
       border-radius: 6px;
       margin-top: 10px;
     }
+    .post a {
+      display: inline-block;
+      margin-top: 10px;
+      color: #0af;
+      text-decoration: none;
+    }
+    .post a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
@@ -196,7 +205,7 @@
           div.classList.add("post");
           div.innerHTML = `
             <p><strong>${username}</strong></p>
-            <p>${post.content || ""}</p>
+            ${post.content ? `<p>${post.content}</p>` : ""}
             ${post.fileUrl ? (post.fileType === "image" 
               ? `<img src="${post.fileUrl}" alt="Imagen">` 
               : `<a href="${post.fileUrl}" target="_blank">📎 Descargar archivo</a>`) 
