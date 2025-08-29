@@ -4,7 +4,97 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>primeron registrense y luego inicien sesión cachudos wassaaaa</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    /* 🔹 Fondo degradado elegante */
+    body {
+      margin: 0;
+      font-family: "Poppins", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1e1e2f, #2a2a40, #0f0f17);
+      color: #fff;
+    }
+
+    /* 🔹 Caja de login */
+    .login-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      width: 320px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    /* 🔹 Título */
+    .login-container h1 {
+      margin-bottom: 25px;
+      font-size: 26px;
+      color: #00c3ff;
+    }
+
+    /* 🔹 Inputs */
+    .login-container input {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      transition: 0.3s;
+    }
+
+    .login-container input::placeholder {
+      color: #bbb;
+    }
+
+    .login-container input:focus {
+      background: rgba(255, 255, 255, 0.25);
+    }
+
+    /* 🔹 Botones */
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .login-container button:first-of-type {
+      background: linear-gradient(45deg, #00c3ff, #0072ff);
+      color: #fff;
+    }
+
+    .login-container button:first-of-type:hover {
+      background: linear-gradient(45deg, #0099cc, #0059cc);
+    }
+
+    .login-container button:last-of-type {
+      background: linear-gradient(45deg, #ff6ec4, #7873f5);
+      color: #fff;
+    }
+
+    .login-container button:last-of-type:hover {
+      background: linear-gradient(45deg, #d959a9, #5e55d9);
+    }
+
+    /* 🔹 Animación suave */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
 </head>
 <body>
   <div class="login-container">
@@ -16,14 +106,12 @@
   </div>
 
   <script type="module">
-    // Importar librerías Firebase desde CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
     import { getFirestore, setDoc, doc } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    // 🔹 Configuración de Firebase (la de MiRedSocialWeb)
     const firebaseConfig = {
       apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
       authDomain: "miredsocial-b50ce.firebaseapp.com",
@@ -34,37 +122,33 @@
       measurementId: "G-97HJGYQX6B"
     };
 
-    // Inicializar Firebase
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
-    // 🔹 Función login
     async function login(){
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        window.location.href = "home.html"; // redirige al home
+        window.location.href = "home.html";
       } catch(e){
         alert("Error: " + e.message);
       }
     }
     window.login = login;
 
-    // 🔹 Función register
     async function register(){
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       try {
         const cred = await createUserWithEmailAndPassword(auth, email, password);
-        // Guardar datos en Firestore
         await setDoc(doc(db, "users", cred.user.uid), {
           uid: cred.user.uid,
           email: email,
           nombre: email.split("@")[0]
         });
-        window.location.href = "home.html"; // redirige al home
+        window.location.href = "home.html";
       } catch(e){
         alert("Error: " + e.message);
       }
@@ -73,4 +157,3 @@
   </script>
 </body>
 </html>
-
