@@ -92,8 +92,7 @@
   <header>Mi Red Social - Inicio</header>
   <nav>
     <a href="home.html">Inicio</a>
-    <a href="reels.html">📤 Subir Reels</a>
-    <a href="feed.html">👀 Ver Reels</a>
+    <a href="reels.html">Reels</a>
     <a href="chat.html">Chat</a>
     <a href="#" id="logoutBtn">Salir</a>
   </nav>
@@ -135,7 +134,7 @@
 
     let currentUser;
 
-    // 🔹 Revisar sesión
+    // Revisar sesión
     onAuthStateChanged(auth, (user) => {
       if(user){
         currentUser = user;
@@ -145,7 +144,7 @@
       }
     });
 
-    // 🔹 Publicar con texto y archivo
+    // Publicar con texto y archivo
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
       const file = document.getElementById("fileInput").files[0];
@@ -174,9 +173,9 @@
     }
     window.publishPost = publishPost;
 
-    // 🔹 Mostrar publicaciones en tiempo real
+    // Mostrar publicaciones en tiempo real (orden DESC)
     function loadPosts(){
-      const q = query(collection(db, "posts"), orderBy("timestamp","asc"));  
+      const q = query(collection(db, "posts"), orderBy("timestamp","desc"));  // 🔹 DESCENDENTE
       onSnapshot(q, async (snapshot) => {
         const feedDiv = document.getElementById("feed");
         feedDiv.innerHTML = "";
@@ -208,7 +207,7 @@
       });
     }
 
-    // 🔹 Logout
+    // Logout
     document.getElementById("logoutBtn").addEventListener("click", () => {
       signOut(auth).then(() => {
         window.location.href = "index.html";
