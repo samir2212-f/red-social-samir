@@ -1,127 +1,125 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Reels - Mi Red Social</title>
   <style>
     body {
       margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #000;
+      background: #000;
       color: #fff;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+
+    /* Contenedor principal de los reels */
+    .reels-container {
+      height: 100vh;
+      width: 100vw;
+      scroll-snap-type: y mandatory;
+      overflow-y: scroll;
+    }
+
+    /* Cada reel ocupa toda la pantalla */
+    .reel {
+      position: relative;
+      height: 100vh;
+      width: 100%;
+      scroll-snap-align: start;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      min-height: 100vh;
+      overflow: hidden;
     }
 
-    h1 {
-      margin-bottom: 20px;
-      font-size: 28px;
-      text-align: center;
+    .reel video {
+      height: 100%;
+      width: auto;
+      max-width: 100%;
+      object-fit: cover;
     }
 
-    #videoPreview {
-      width: 100%;
-      max-width: 400px;
-      height: auto;
-      border-radius: 15px;
-      margin: 20px 0;
-      display: none;
+    /* Botones estilo TikTok */
+    .actions {
+      position: absolute;
+      right: 10px;
+      bottom: 100px;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      align-items: center;
     }
 
-    input[type="file"] {
-      display: none;
-    }
-
-    label {
-      background: linear-gradient(45deg, #ff0050, #00f2ea);
-      padding: 12px 25px;
-      border-radius: 25px;
-      font-size: 16px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.3s;
-    }
-
-    label:hover {
-      opacity: 0.8;
-    }
-
-    button {
-      background: #ff0050;
-      color: white;
+    .actions button {
+      background: rgba(255, 255, 255, 0.2);
       border: none;
-      padding: 12px 25px;
-      border-radius: 25px;
-      font-size: 16px;
-      font-weight: bold;
+      color: white;
+      font-size: 22px;
+      border-radius: 50%;
+      padding: 12px;
       cursor: pointer;
-      transition: 0.3s;
-      margin-top: 15px;
+      transition: 0.2s;
     }
 
-    button:hover {
-      background: #e60045;
+    .actions button:hover {
+      background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Texto inferior */
+    .info {
+      position: absolute;
+      bottom: 20px;
+      left: 15px;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
-  <h1>📹 Subir Reels</h1>
+  <div class="reels-container">
+    <!-- Reel 1 -->
+    <div class="reel">
+      <video src="video1.mp4" autoplay loop muted></video>
+      <div class="actions">
+        <button>❤️</button>
+        <button>💬</button>
+        <button>🔗</button>
+      </div>
+      <div class="info">
+        <p>@usuario1</p>
+        <p>Mi primer reel 😎</p>
+      </div>
+    </div>
 
-  <input type="file" id="fileInput" accept="video/*">
-  <label for="fileInput">🎬 Seleccionar Video</label>
-
-  <video id="videoPreview" controls></video>
-  <button id="uploadBtn" style="display:none;">⬆️ Publicar</button>
+    <!-- Reel 2 -->
+    <div class="reel">
+      <video src="video2.mp4" autoplay loop muted></video>
+      <div class="actions">
+        <button>❤️</button>
+        <button>💬</button>
+        <button>🔗</button>
+      </div>
+      <div class="info">
+        <p>@usuario2</p>
+        <p>Segundo video 🔥🔥</p>
+      </div>
+    </div>
+  </div>
 
   <script>
-    const fileInput = document.getElementById("fileInput");
-    const videoPreview = document.getElementById("videoPreview");
-    const uploadBtn = document.getElementById("uploadBtn");
-
-    let selectedFile;
-
-    // Mostrar vista previa
-    fileInput.addEventListener("change", (e) => {
-      selectedFile = e.target.files[0];
-      if (selectedFile) {
-        videoPreview.src = URL.createObjectURL(selectedFile);
-        videoPreview.style.display = "block";
-        uploadBtn.style.display = "inline-block";
-      }
-    });
-
-    // Subir a Cloudinary
-    uploadBtn.addEventListener("click", async () => {
-      if (!selectedFile) return alert("Primero selecciona un video");
-
-      const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("upload_preset", "Mis_reels"); // Tu preset
-       
-      try {
-        const res = await fetch("https://api.cloudinary.com/v1_1/dbgpvwprb/video/upload", {
-          method: "POST",
-          body: formData
-        });
-        const data = await res.json();
-
-        if (data.secure_url) {
-          alert("✅ Video subido correctamente");
-          console.log("URL del video:", data.secure_url);
-          // Aquí puedes agregar lógica para mostrarlo en tu feed tipo TikTok
+    // Reproduce solo el reel visible (como TikTok)
+    const videos = document.querySelectorAll("video");
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.play();
         } else {
-          alert("❌ Error al subir el video");
-          console.error(data);
+          entry.target.pause();
         }
-      } catch (err) {
-        alert("❌ Error de conexión");
-        console.error(err);
-      }
-    });
+      });
+    }, { threshold: 0.7 });
+
+    videos.forEach(video => observer.observe(video));
   </script>
 </body>
 </html>
