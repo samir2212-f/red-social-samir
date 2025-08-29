@@ -30,9 +30,21 @@
       color: #ccc;
       text-decoration: none;
       font-weight: bold;
+      position: relative;
     }
     nav a:hover {
       color: #fff;
+    }
+    #chatNotif {
+      display: none;
+      background: red;
+      color: white;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 50%;
+      position: absolute;
+      top: -6px;
+      right: -14px;
     }
     main {
       padding: 20px;
@@ -94,7 +106,7 @@
     <a href="home.html">Inicio</a>
     <a href="reels.html">Subir Reels</a>
     <a href="feed.html">Ver Reels</a>
-    <a href="chat.html">Chat</a>
+    <a href="chat.html" id="chatLink">Chat <span id="chatNotif">0</span></a>
     <a href="#" id="logoutBtn">Salir</a>
   </nav>
   <main>
@@ -114,7 +126,7 @@
     /* ----------------- Firebase ----------------- */
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, updateDoc, arrayUnion } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -145,12 +157,13 @@
       if(user){
         currentUser = user;
         loadPosts();
+        monitorPrivateChat(); // 👈 activar notificaciones
       } else {
         window.location.href = "index.html";
       }
     });
 
-    // 📌 Enviar mensaje con texto y archivo (actualizado con carpeta "archivos/")
+    // 📌 Enviar mensaje global
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
       const file = document.getElementById("fileInput").files[0];
@@ -195,7 +208,7 @@
     }
     window.publishPost = publishPost;
 
-    // Mostrar mensajes en tiempo real
+    // 📌 Mostrar mensajes globales en tiempo real
     function loadPosts(){
       const q = query(collection(db, "chat"), orderBy("timestamp","desc"));
       onSnapshot(q, async (snapshot) => {
@@ -224,6 +237,30 @@
             <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>
           `;
           feedDiv.appendChild(div);
+        }
+      });
+    }
+
+    // 📌 Notificación de mensajes privados
+    function monitorPrivateChat() {
+      const chatNotif = document.getElementById("chatNotif");
+      const q = query(collection(db, "privateChat"), orderBy("timestamp", "desc"));
+
+      onSnapshot(q, (snapshot) => {
+        let unreadCount = 0;
+
+        snapshot.docs.forEach((docSnap) => {
+          const msg = docSnap.data();
+          if (msg.uid !== currentUser.uid && !msg.readBy?.includes(currentUser.uid)) {
+            unreadCount++;
+          }
+        });
+
+        if (unreadCount > 0) {
+          chatNotif.style.display = "inline-block";
+          chatNotif.textContent = unreadCount;
+        } else {
+          chatNotif.style.display = "none";
         }
       });
     }
