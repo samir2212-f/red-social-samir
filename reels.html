@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reels - Mi Red Social</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: #000;
+      color: #fff;
+    }
+    header {
+      background: #111;
+      padding: 15px;
+      text-align: center;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    nav {
+      background: #222;
+      display: flex;
+      justify-content: space-around;
+      padding: 10px;
+    }
+    nav a {
+      color: #ccc;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    nav a:hover {
+      color: #fff;
+    }
+    .upload-box {
+      background: #111;
+      padding: 15px;
+      border-radius: 8px;
+      margin: 20px;
+    }
+    textarea, input[type="file"] {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: none;
+      background: #333;
+      color: #eee;
+      margin-bottom: 10px;
+    }
+    button {
+      margin-top: 10px;
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      background: #0af;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #09c;
+    }
+    .reel-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      margin: 20px;
+    }
+    .reel {
+      width: 100%;
+      max-width: 400px;
+      background: #111;
+      border-radius: 12px;
+      padding: 10px;
+      box-shadow: 0px 0px 8px rgba(255,255,255,0.2);
+    }
+    .reel video, .reel img {
+      width: 100%;
+      border-radius: 12px;
+    }
+    .reel p {
+      margin: 10px 0 0;
+    }
+    .reel small {
+      color: #aaa;
+      display: block;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <header>Reels</header>
+  <nav>
+    <a href="home.html">Inicio</a>
+    <a href="reels.html">Reels</a>
+    <a href="chat.html">Chat</a>
+    <a href="#" id="logoutBtn">Salir</a>
+  </nav>
+
+  <section class="upload-box">
+    <h2>Subir Reel</h2>
+    <textarea id="caption" rows="2" placeholder="Escribe una descripción..."></textarea>
+    <input type="file" id="fileInput" accept="video/*,image/*">
+    <button onclick="uploadReel()">Publicar</button>
+  </section>
+
+  <section>
+    <h2 style="text-align:center;">Reels publicados</h2>
+    <div class="reel-container" id="reelFeed"></div>
+  </section>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getStorage, ref, uploadBytes, getDownloadURL } 
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+      authDomain: "miredsocial-b50ce.firebaseapp.com",
+      projectId: "miredsocial-b50ce",
+      storageBucket: "miredsocial-b50ce.appspot.com",
+      messagingSenderId: "1087784350299",
+      appId: "1:1087784350299:web:4c6b960635700994ef457e",
+      measurementId: "G-97HJGYQX6B"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const storage = getStorage(app);
+
+    let currentUser;
+
+    // Revisar sesión
+    onAuthStateChanged(auth, (user) => {
+      if(user){
+        currentUser = user;
+        loadReels();
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    // Subir reel
+    async function uploadReel(){
+      const caption = document.getElementById("caption").value.trim();
+      const file = document.getElementById("fileInput").files[0];
+      if(!file) return alert("Selecciona una foto o video");
+
+      const fileRef = ref(storage, "reels/" + Date.now() + "-" + file.name);
+      await uploadBytes(fileRef, file);
+      const fileUrl = await getDownloadURL(fileRef);
+      const fileType = file.type.startsWith("video/") ? "video" : "image";
+
+      await addDoc(collection(db, "reels"), {
+        uid: currentUser.uid,
+        caption: caption,
+        fileUrl: fileUrl,
+        fileType: fileType,
+        timestamp: serverTimestamp()
+      });
+
+      document.getElementById("caption").value = "";
+      document.getElementById("fileInput").value = "";
+    }
+    window.uploadReel = uploadReel;
+
+    // Mostrar reels
+    function loadReels(){
+      const q = query(collection(db, "reels"), orderBy("timestamp","desc"));
+      onSnapshot(q, async (snapshot) => {
+        const feed = document.getElementById("reelFeed");
+        feed.innerHTML = "";
+        for(const docSnap of snapshot.docs){
+          const reel = docSnap.data();
+
+          // obtener nombre del usuario
+          let username = "Usuario";
+          if(reel.uid){
+            const userDoc = await getDoc(doc(db, "users", reel.uid));
+            if(userDoc.exists()){
+              username = userDoc.data().nombre || "Usuario";
+            }
+          }
+
+          const div = document.createElement("div");
+          div.classList.add("reel");
+          div.innerHTML = `
+            ${reel.fileType === "video" 
+              ? `<video src="${reel.fileUrl}" controls loop></video>` 
+              : `<img src="${reel.fileUrl}" alt="Reel">`}
+            <p><strong>${username}</strong>: ${reel.caption || ""}</p>
+            <small>${reel.timestamp ? reel.timestamp.toDate().toLocaleString() : ""}</small>
+          `;
+          feed.appendChild(div);
+        }
+      });
+    }
+
+    // Logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
+      });
+    });
+  </script>
+</body>
+</html>
