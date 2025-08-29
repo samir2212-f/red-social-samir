@@ -4,11 +4,29 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Mi Red Social - Chat</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; }
+    header { background: linear-gradient(90deg, #222, #444); padding: 15px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; }
+    nav { margin-top: 10px; }
+    nav a { color: #0af; margin: 0 10px; text-decoration: none; }
+    #friendList { padding: 20px; }
+    #friendList button { display: block; width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; text-align: left; }
+    #friendList button:hover { background: #09c; }
+    .unread { font-weight: bold; color: #ff4444; margin-left: 8px; }
+    #chatWindow { padding: 20px; }
+    #messages { background: #1a1a1a; padding: 15px; height: 400px; overflow-y: auto; border-radius: 8px; margin-bottom: 10px; }
+    .msg { padding: 8px 12px; margin: 6px 0; border-radius: 12px; max-width: 70%; }
+    .mine { background: #0af; color: #fff; margin-left: auto; }
+    .theirs { background: #333; color: #eee; margin-right: auto; }
+    .chatbox { display: flex; gap: 10px; }
+    .chatbox input { flex: 1; padding: 10px; border-radius: 8px; border: none; outline: none; background: #222; color: #fff; }
+    .chatbox button { padding: 10px 15px; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; }
+    .chatbox button:hover { background: #09c; }
+  </style>
 </head>
 <body>
   <header>
-    <h2>Chat</h2>
+    Chat Privado
     <nav>
       <a href="home.html">Home</a>
       <a href="chat.html">Chat</a>
@@ -30,7 +48,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, getDocs, doc } 
+    import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, getDocs, updateDoc, doc, where } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -61,11 +79,24 @@
       const querySnap = await getDocs(collection(db, "users"));
       const listDiv = document.getElementById("friendList");
       listDiv.innerHTML = "<h3>Amigos</h3>";
-      querySnap.forEach(docSnap => {
+      querySnap.forEach(async (docSnap) => {
         const data = docSnap.data();
         if(data.uid !== currentUser.uid){
           const btn = document.createElement("button");
           btn.textContent = data.nombre || data.email;
+
+          // Escuchar mensajes no leídos
+          const chatKey = [currentUser.uid, data.uid].sort().join("_");
+          const q = query(collection(db, "chats", chatKey, "mensajes"), where("to", "==", currentUser.uid), where("leido", "==", false));
+          onSnapshot(q, (snap) => {
+            const unreadCount = snap.size;
+            if(unreadCount > 0){
+              btn.innerHTML = (data.nombre || data.email) + " <span class='unread'>(" + unreadCount + ")</span>";
+            } else {
+              btn.innerHTML = data.nombre || data.email;
+            }
+          });
+
           btn.onclick = () => openChat(data);
           listDiv.appendChild(btn);
         }
@@ -81,6 +112,7 @@
       document.getElementById("chatWindow").style.display = "block";
 
       loadMessages();
+      markAsRead(); // ✅ marcar como leídos al abrir chat
     }
 
     async function sendMessage(){
@@ -90,6 +122,7 @@
         from: currentUser.uid,
         to: currentFriend.uid,
         text: input.value,
+        leido: false,
         timestamp: Date.now()
       });
       input.value = "";
@@ -109,6 +142,15 @@
           messagesDiv.appendChild(div);
         });
         messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      });
+    }
+
+    async function markAsRead(){
+      const q = query(collection(db, "chats", chatId, "mensajes"), where("to", "==", currentUser.uid), where("leido", "==", false));
+      onSnapshot(q, async (snapshot) => {
+        for(const docSnap of snapshot.docs){
+          await updateDoc(doc(db, "chats", chatId, "mensajes", docSnap.id), { leido: true });
+        }
       });
     }
 
