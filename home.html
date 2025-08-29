@@ -150,7 +150,7 @@
       }
     });
 
-    // Enviar mensaje con texto y archivo
+    // 📌 Enviar mensaje con texto y archivo (actualizado con carpeta "archivos/")
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
       const file = document.getElementById("fileInput").files[0];
@@ -160,27 +160,29 @@
       let fileType = null;
 
       if(file){
-        // Subir archivo a Supabase (bucket Chat)
-        const fileName = Date.now() + "-" + file.name;
+        const filePath = `archivos/${Date.now()}-${file.name}`;
+
         const { data, error } = await supabase.storage
           .from("Chat")
-          .upload(fileName, file);
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false
+          });
 
         if(error){
           alert("Error subiendo archivo: " + error.message);
           return;
         }
 
-        // Obtener URL pública
-        const { data: publicUrl } = supabase.storage
+        const { data: publicData } = supabase.storage
           .from("Chat")
-          .getPublicUrl(fileName);
+          .getPublicUrl(filePath);
 
-        fileUrl = publicUrl.publicUrl;
+        fileUrl = publicData.publicUrl;
         fileType = file.type.startsWith("image/") ? "image" : "file";
       }
 
-      await addDoc(collection(db, "chat"), {   // 🔹 ahora va a la colección "chat"
+      await addDoc(collection(db, "chat"), {
         uid: currentUser.uid,
         content: content,
         fileUrl: fileUrl,
@@ -193,7 +195,7 @@
     }
     window.publishPost = publishPost;
 
-    // Mostrar mensajes en tiempo real (orden DESC → primero los nuevos)
+    // Mostrar mensajes en tiempo real
     function loadPosts(){
       const q = query(collection(db, "chat"), orderBy("timestamp","desc"));
       onSnapshot(q, async (snapshot) => {
@@ -202,7 +204,6 @@
         for (const docSnap of snapshot.docs) {
           const post = docSnap.data();
 
-          // obtener nombre del usuario
           let username = "Usuario";
           if(post.uid){
             const userDoc = await getDoc(doc(db, "users", post.uid));
