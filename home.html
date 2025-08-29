@@ -5,136 +5,27 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Red Social de samir uff xdxxxdxx</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
-      margin: 0;
-      padding: 0;
-      display: flex;
-    }
-    header {
-      background: linear-gradient(90deg, #222, #444);
-      padding: 15px;
-      text-align: center;
-      font-size: 22px;
-      font-weight: bold;
-      color: #fff;
-      width: 100%;
-    }
-    nav {
-      background: #222;
-      display: flex;
-      justify-content: space-around;
-      padding: 10px;
-    }
-    nav a {
-      color: #ccc;
-      text-decoration: none;
-      font-weight: bold;
-      position: relative;
-    }
-    nav a:hover {
-      color: #fff;
-    }
-    #chatNotif {
-      display: none;
-      background: red;
-      color: white;
-      font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 50%;
-      position: absolute;
-      top: -8px;
-      right: -14px;
-    }
-    main {
-      flex: 1;
-      padding: 20px;
-    }
-    aside {
-      width: 220px;
-      background: #1c1c1c;
-      padding: 15px;
-      border-left: 2px solid #333;
-    }
-    .post-box {
-      background: #222;
-      padding: 15px;
-      border-radius: 8px;
-      margin-bottom: 20px;
-    }
-    textarea, input[type="file"] {
-      width: 100%;
-      padding: 10px;
-      border-radius: 8px;
-      border: none;
-      outline: none;
-      resize: none;
-      background: #333;
-      color: #eee;
-      margin-bottom: 10px;
-    }
-    button {
-      margin-top: 10px;
-      padding: 10px 15px;
-      border: none;
-      border-radius: 6px;
-      background: #0af;
-      color: #fff;
-      cursor: pointer;
-    }
-    button:hover {
-      background: #09c;
-    }
-    .post {
-      background: #1a1a1a;
-      margin-bottom: 15px;
-      padding: 15px;
-      border-radius: 8px;
-      box-shadow: 0px 0px 5px rgba(255,255,255,0.1);
-    }
-    .post strong {
-      color: #0af;
-    }
-    .post small {
-      display: block;
-      color: #888;
-      margin-top: 5px;
-    }
-    .post img {
-      max-width: 100%;
-      border-radius: 6px;
-      margin-top: 10px;
-    }
-    .reactions button {
-      margin-right: 5px;
-      font-size: 14px;
-      background: #333;
-    }
-    /* Perfil */
-    #profile {
-      position: absolute;
-      top: 15px;
-      right: 20px;
-      background: #222;
-      padding: 10px;
-      border-radius: 8px;
-      color: #fff;
-    }
-    /* Dark/Light mode */
-    .light {
-      background: #f4f4f4;
-      color: #111;
-    }
-    .light nav, .light header, .light aside {
-      background: #ddd;
-      color: #111;
-    }
-    .light .post {
-      background: #fff;
-      color: #000;
-    }
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; }
+    header { background: linear-gradient(90deg, #222, #444); padding: 15px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; width: 100%; }
+    nav { background: #222; display: flex; justify-content: space-around; padding: 10px; }
+    nav a { color: #ccc; text-decoration: none; font-weight: bold; position: relative; }
+    nav a:hover { color: #fff; }
+    #chatNotif { display: none; background: red; color: white; font-size: 12px; padding: 2px 6px; border-radius: 50%; position: absolute; top: -8px; right: -14px; }
+    main { flex: 1; padding: 20px; }
+    aside { width: 220px; background: #1c1c1c; padding: 15px; border-left: 2px solid #333; }
+    .post-box { background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    textarea, input[type="file"] { width: 100%; padding: 10px; border-radius: 8px; border: none; outline: none; resize: none; background: #333; color: #eee; margin-bottom: 10px; }
+    button { margin-top: 10px; padding: 10px 15px; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; }
+    button:hover { background: #09c; }
+    .post { background: #1a1a1a; margin-bottom: 15px; padding: 15px; border-radius: 8px; box-shadow: 0px 0px 5px rgba(255,255,255,0.1); }
+    .post strong { color: #0af; }
+    .post small { display: block; color: #888; margin-top: 5px; }
+    .post img { max-width: 100%; border-radius: 6px; margin-top: 10px; }
+    .reactions button { margin-right: 5px; font-size: 14px; background: #333; }
+    #profile { position: absolute; top: 15px; right: 20px; background: #222; padding: 10px; border-radius: 8px; color: #fff; }
+    .light { background: #f4f4f4; color: #111; }
+    .light nav, .light header, .light aside { background: #ddd; color: #111; }
+    .light .post { background: #fff; color: #000; }
   </style>
 </head>
 <body>
@@ -172,7 +63,7 @@
   <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc } 
+    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, arrayUnion } 
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -187,10 +78,6 @@
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
-
-    import { createClient } from "https://esm.sh/@supabase/supabase-js";
-    const supabase = createClient("https://klziukovalzzcinifvaw.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...");
 
     let currentUser;
 
@@ -262,6 +149,7 @@
       });
     }
 
+    // 📌 Notificaciones de mensajes privados
     function monitorPrivateChat(){
       const chatNotif=document.getElementById("chatNotif");
       const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
@@ -269,7 +157,9 @@
         let unread=0;
         snapshot.docs.forEach(docSnap=>{
           const msg=docSnap.data();
-          if(msg.uid!==currentUser.uid) unread++;
+          if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+            unread++;
+          }
         });
         if(unread>0){
           chatNotif.style.display="inline-block";
@@ -277,6 +167,21 @@
         } else chatNotif.style.display="none";
       });
     }
+
+    // 📌 Al entrar al chat privado, marcar mensajes como leídos
+    document.getElementById("chatLink").addEventListener("click", async ()=>{
+      const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+      onSnapshot(q,(snapshot)=>{
+        snapshot.docs.forEach(async(docSnap)=>{
+          const msg=docSnap.data();
+          if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+            await updateDoc(doc(db,"privateChat",docSnap.id),{
+              readBy: arrayUnion(currentUser.uid)
+            });
+          }
+        });
+      });
+    });
 
     document.getElementById("logoutBtn").addEventListener("click",()=>{
       signOut(auth).then(()=>window.location.href="index.html");
