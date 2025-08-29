@@ -2,106 +2,72 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Subir Reels</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      background: #121212;
-      color: white;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
+    body { 
+      display:flex; flex-direction:column; 
+      align-items:center; justify-content:center; 
+      height:100vh; background:black; color:white; 
+      font-family:sans-serif;
     }
-
-    .upload-box {
-      background: #1e1e1e;
-      padding: 20px;
-      border-radius: 15px;
-      text-align: center;
-      box-shadow: 0 0 15px rgba(255, 0, 100, 0.5);
-    }
-
-    input[type="file"] {
-      margin: 15px 0;
-    }
-
     button {
-      background: linear-gradient(45deg, #ff0050, #00f2ea);
-      border: none;
-      padding: 10px 20px;
-      border-radius: 30px;
-      color: white;
-      font-size: 16px;
-      cursor: pointer;
-      transition: transform 0.2s ease;
+      margin-top:10px; padding:10px 20px; 
+      background:linear-gradient(45deg,#ff0057,#ff7b00);
+      border:none; border-radius:20px; color:white; 
+      font-size:16px; cursor:pointer;
     }
-
-    button:hover {
-      transform: scale(1.1);
-    }
+    input { margin-top:15px; }
   </style>
 </head>
 <body>
-  <div class="upload-box">
-    <h2>🎬 Subir Reels</h2>
-    <input type="file" id="videoInput" accept="video/*">
-    <br>
-    <button onclick="uploadVideo()">📤 Publicar</button>
-  </div>
+  <h2>📤 Subir Reel</h2>
+  <input type="file" id="videoFile" accept="video/*">
+  <button onclick="uploadReel()">Publicar</button>
 
   <!-- SDK de Supabase -->
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script>
-    // ⚡ Configuración de tu proyecto Supabase
-    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co"; // 👈 tu URL
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4"; // 👈 tu anon key
+    // ⚡ Configuración Supabase
+    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function uploadVideo() {
-      const file = document.getElementById("videoInput").files[0];
-      if (!file) {
-        alert("Por favor selecciona un video");
+    async function uploadReel() {
+      const fileInput = document.getElementById("videoFile");
+      if (fileInput.files.length === 0) {
+        alert("Selecciona un video primero");
         return;
       }
 
-      // nombre único para el archivo
-      const fileName = `${Date.now()}_${file.name}`;
+      const file = fileInput.files[0];
+      const fileName = Date.now() + "-" + file.name; // nombre único
 
-      // subir al bucket Samir
+      // 👇 Subir al bucket Samir
       const { data, error } = await supabase.storage
         .from("Samir")
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: true
-        });
+        .upload(fileName, file, { cacheControl: "3600", upsert: false });
 
       if (error) {
-        console.error("Error subiendo:", error.message);
-        alert("❌ Error al subir el video");
+        console.error(error);
+        alert("❌ Error al subir el video: " + error.message);
         return;
       }
 
-      // obtener URL pública
+      // 👇 Generar URL pública
       const { data: publicUrl } = supabase
         .storage
         .from("Samir")
         .getPublicUrl(fileName);
 
-      if (publicUrl.publicUrl) {
-        alert("✅ Video publicado con éxito");
+      console.log("✅ URL pública:", publicUrl.publicUrl);
 
-        // opcional: guardar la URL en localStorage para debug
-        let reels = JSON.parse(localStorage.getItem("reels")) || [];
-        reels.push(publicUrl.publicUrl);
-        localStorage.setItem("reels", JSON.stringify(reels));
+      // Guardar en localStorage para mostrarlo en feed.html
+      let reels = JSON.parse(localStorage.getItem("reels")) || [];
+      reels.push(publicUrl.publicUrl);
+      localStorage.setItem("reels", JSON.stringify(reels));
 
-        // redirigir al feed
-        window.location.href = "feed.html";
-      }
+      alert("✅ Video subido correctamente");
+      window.location.href = "feed.html";
     }
   </script>
 </body>
