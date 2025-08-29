@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Red Social de Samir</title>
+  <title>Red Social de samir uff xdxxxdxx</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -92,20 +92,20 @@
   <header>Mi Red Social - Inicio</header>
   <nav>
     <a href="home.html">Inicio</a>
-    <a href="reels.html">Subir Reels</a> <!-- 🔹 Botón para subir Reels -->
-    <a href="feed.html">Ver Reels</a>   <!-- 🔹 Botón para ver Reels -->
+    <a href="reels.html">Subir Reels</a>
+    <a href="feed.html">Ver Reels</a>
     <a href="chat.html">Chat</a>
     <a href="#" id="logoutBtn">Salir</a>
   </nav>
   <main>
     <section class="post-box">
-      <h2>Crear publicación</h2>
-      <textarea id="postContent" rows="3" placeholder="¿Qué estás pensando?"></textarea>
+      <h2>Chat Global</h2>
+      <textarea id="postContent" rows="3" placeholder="Escribe un mensaje..."></textarea>
       <input type="file" id="fileInput">
-      <button onclick="publishPost()">Publicar</button>
+      <button onclick="publishPost()">Enviar mensaje</button>
     </section>
     <section>
-      <h2>Publicaciones</h2>
+      <h2>Mensajes</h2>
       <div id="feed"></div>
     </section>
   </main>
@@ -145,7 +145,7 @@
       }
     });
 
-    // Publicar con texto y archivo
+    // Enviar mensaje con texto y archivo
     async function publishPost(){
       const content = document.getElementById("postContent").value.trim();
       const file = document.getElementById("fileInput").files[0];
@@ -155,13 +155,13 @@
       let fileType = null;
 
       if(file){
-        const fileRef = ref(storage, "posts/" + Date.now() + "-" + file.name);
+        const fileRef = ref(storage, "chat/" + Date.now() + "-" + file.name);
         await uploadBytes(fileRef, file);
         fileUrl = await getDownloadURL(fileRef);
         fileType = file.type.startsWith("image/") ? "image" : "file";
       }
 
-      await addDoc(collection(db, "posts"), {
+      await addDoc(collection(db, "chat"), {   // 🔹 ahora va a la colección "chat"
         uid: currentUser.uid,
         content: content,
         fileUrl: fileUrl,
@@ -174,9 +174,9 @@
     }
     window.publishPost = publishPost;
 
-    // Mostrar publicaciones en tiempo real (orden DESC)
+    // Mostrar mensajes en tiempo real (orden DESC → primero los nuevos)
     function loadPosts(){
-      const q = query(collection(db, "posts"), orderBy("timestamp","desc"));  // 🔹 DESCENDENTE
+      const q = query(collection(db, "chat"), orderBy("timestamp","desc"));
       onSnapshot(q, async (snapshot) => {
         const feedDiv = document.getElementById("feed");
         feedDiv.innerHTML = "";
