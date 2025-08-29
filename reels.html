@@ -69,7 +69,8 @@
       formData.append("upload_preset", preset);
 
       try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/upload`, {
+        // ⚡ endpoint correcto para videos
+        const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/video/upload`, {
           method: "POST",
           body: formData
         });
@@ -79,7 +80,8 @@
 
         if (data.secure_url) {
           alert("✅ Video publicado con éxito");
-          // Guardamos en localStorage para el feed
+
+          // Guardamos la URL en localStorage
           let reels = JSON.parse(localStorage.getItem("reels")) || [];
           reels.push(data.secure_url);
           localStorage.setItem("reels", JSON.stringify(reels));
