@@ -24,8 +24,8 @@
     .reactions button { margin-right: 5px; font-size: 14px; background: #333; }
     #profile { position: relative; cursor: pointer; background: #222; padding: 8px 12px; border-radius: 6px; }
     #profileMenu { display: none; position: absolute; right: 0; top: 40px; background: #222; border: 1px solid #333; border-radius: 6px; padding: 10px; min-width: 180px; }
-    #profileMenu a { display: block; padding: 6px; color: #ccc; text-decoration: none; }
-    #profileMenu a:hover { background: #333; color: #fff; }
+    #profileMenu a, #profileMenu button { display: block; padding: 6px; color: #ccc; text-decoration: none; background:none; border:none; width:100%; text-align:left; cursor:pointer; }
+    #profileMenu a:hover, #profileMenu button:hover { background: #333; color: #fff; }
     .light { background: #f4f4f4; color: #111; }
     .light nav, .light header, .light aside { background: #ddd; color: #111; }
     .light .post { background: #fff; color: #000; }
@@ -37,6 +37,7 @@
       <div>💬 Hablen pe chubeibis</div>
       <div id="profile">👤 <span id="profileName">Cargando...</span>
         <div id="profileMenu">
+          <button id="editNameBtn">✏️ Cambiar nombre</button>
           <a href="#" id="logoutBtn">🚪 Salir</a>
         </div>
       </div>
@@ -92,8 +93,18 @@
   onAuthStateChanged(auth, async (user) => {
     if(user){
       currentUser = user;
-      document.getElementById("profileName").innerText = user.email || "Usuario";
-      document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || "Usuario");
+
+      // Revisar si ya tiene nombre personalizado
+      const userRef = doc(db,"users",user.uid);
+      const userSnap = await getDoc(userRef);
+
+      let displayName = user.email;
+      if(userSnap.exists() && userSnap.data().nombre){
+        displayName = userSnap.data().nombre;
+      }
+
+      document.getElementById("profileName").innerText = displayName;
+      document.getElementById("welcome").innerText = "Bienvenido, " + displayName;
 
       // Registrar como en línea
       await setDoc(doc(db,"onlineUsers",user.uid),{
@@ -102,7 +113,6 @@
         online:true
       });
 
-      // Si cierra pestaña / recarga → se elimina
       window.addEventListener("beforeunload", async ()=>{
         await deleteDoc(doc(db,"onlineUsers",user.uid));
       });
@@ -193,6 +203,16 @@
         }
       });
     });
+  });
+
+  // 🔹 Cambiar nombre solo dueño
+  document.getElementById("editNameBtn").addEventListener("click", async ()=>{
+    const newName = prompt("Escribe tu nuevo nombre:");
+    if(newName && currentUser){
+      await setDoc(doc(db,"users",currentUser.uid), { nombre:newName }, { merge:true });
+      document.getElementById("profileName").innerText = newName;
+      document.getElementById("welcome").innerText = "Bienvenido, " + newName;
+    }
   });
 
   document.getElementById("logoutBtn").addEventListener("click",async ()=>{
