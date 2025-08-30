@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel de Administración</title>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
+  <style>
+    body{ font-family:sans-serif; background:#111; color:#eee; margin:0; padding:20px; }
+    .tab-btn{ padding:10px; margin:5px; background:#333; border:none; color:#eee; cursor:pointer; border-radius:6px; }
+    .tab-btn.active{ background:#555; }
+    .list{ list-style:none; padding:0; }
+    .list li{ background:#222; padding:10px; margin:8px 0; border-radius:8px; }
+    .actions button{ margin:5px; }
+  </style>
+</head>
+<body>
+  <h2>⚙️ Panel de Administración</h2>
+  <div>
+    <button class="tab-btn" data-tab="privados">Privados (moderación)</button>
+    <button class="tab-btn" data-tab="todos">Todos los mensajes</button>
+    <button class="tab-btn" data-tab="usuarios">Usuarios</button>
+    <button class="tab-btn" data-tab="posts">Posts</button>
+  </div>
+
+  <!-- Contenedores -->
+  <div id="privados" class="tab" style="display:none;">
+    <h3>Privados con groserías</h3>
+    <ul id="privadosList" class="list"></ul>
+  </div>
+
+  <div id="todos" class="tab" style="display:none;">
+    <h3>Todos los privados</h3>
+    <ul id="allMessagesList" class="list"></ul>
+  </div>
+
+  <div id="usuarios" class="tab" style="display:none;">
+    <h3>Usuarios</h3>
+    <ul id="usuariosList" class="list"></ul>
+  </div>
+
+  <div id="posts" class="tab" style="display:none;">
+    <h3>Posts</h3>
+    <ul id="postsList" class="list"></ul>
+  </div>
+
+  <script>
+    // 🔹 Tu configuración Firebase
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_DOMINIO.firebaseapp.com",
+      projectId: "TU_PROJECT_ID",
+      storageBucket: "TU_BUCKET",
+      messagingSenderId: "TU_ID",
+      appId: "TU_APP_ID"
+    };
+    const app = firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // 🔹 Protección: solo admins pueden entrar
+    auth.onAuthStateChanged(async (user)=>{
+      if(!user){
+        alert("No estás autenticado");
+        window.location.href = "index.html";
+      } else {
+        const uDoc = await db.collection("usuarios").doc(user.uid).get();
+        if(!uDoc.exists || uDoc.data().rol !== "admin"){
+          alert("Acceso denegado");
+          window.location.href = "index.html";
+        }
+      }
+    });
+
+    // 🔹 Tabs (navegación interna)
+    document.querySelectorAll(".tab-btn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
+        document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+        document.getElementById(btn.dataset.tab).style.display="block";
+        btn.classList.add("active");
+      });
+    });
+
+    // 🔹 Aquí luego añades loadPrivados(), loadAllMessages(), loadUsuarios(), loadPosts()
+  </script>
+</body>
+</html>
