@@ -67,132 +67,147 @@
   </aside>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-    import { getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, doc, getDoc, setDoc, updateDoc, arrayUnion } 
-      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { 
+    getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, 
+    doc, getDoc, setDoc, updateDoc, arrayUnion, deleteDoc 
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
-      authDomain: "miredsocial-b50ce.firebaseapp.com",
-      projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.appspot.com",
-      messagingSenderId: "1087784350299",
-      appId: "1:1087784350299:web:4c6b960635700994ef457e"
-    };
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+    authDomain: "miredsocial-b50ce.firebaseapp.com",
+    projectId: "miredsocial-b50ce",
+    storageBucket: "miredsocial-b50ce.appspot.com",
+    messagingSenderId: "1087784350299",
+    appId: "1:1087784350299:web:4c6b960635700994ef457e"
+  };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    let currentUser;
+  let currentUser;
 
-    onAuthStateChanged(auth, async (user) => {
-      if(user){
-        currentUser = user;
-        document.getElementById("profileName").innerText = user.email || "Usuario";
-        document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || "Usuario");
-        await setDoc(doc(db,"onlineUsers",user.uid),{ email:user.email, lastActive:serverTimestamp() });
-        loadPosts();
-        loadUsers();
-        monitorPrivateChat();
-      } else {
-        window.location.href = "index.html";
+  onAuthStateChanged(auth, async (user) => {
+    if(user){
+      currentUser = user;
+      document.getElementById("profileName").innerText = user.email || "Usuario";
+      document.getElementById("welcome").innerText = "Bienvenido, " + (user.email || "Usuario");
+
+      // Registrar como en línea
+      await setDoc(doc(db,"onlineUsers",user.uid),{
+        email:user.email,
+        lastActive:serverTimestamp(),
+        online:true
+      });
+
+      // Si cierra pestaña / recarga → se elimina
+      window.addEventListener("beforeunload", async ()=>{
+        await deleteDoc(doc(db,"onlineUsers",user.uid));
+      });
+
+      loadPosts();
+      loadUsers();
+      monitorPrivateChat();
+    } else {
+      window.location.href = "index.html";
+    }
+  });
+
+  async function publishPost(){
+    const content = document.getElementById("postContent").value.trim();
+    if(content==="") return;
+    await addDoc(collection(db,"chat"),{ uid:currentUser.uid, content, timestamp:serverTimestamp() });
+    document.getElementById("postContent").value="";
+  }
+  window.publishPost=publishPost;
+
+  function loadPosts(){
+    const q=query(collection(db,"chat"),orderBy("timestamp","desc"));
+    onSnapshot(q, async(snapshot)=>{
+      const feedDiv=document.getElementById("feed");
+      feedDiv.innerHTML="";
+      for(const docSnap of snapshot.docs){
+        const post=docSnap.data();
+        let username="Usuario";
+        if(post.uid){
+          const userDoc=await getDoc(doc(db,"users",post.uid));
+          if(userDoc.exists()) username=userDoc.data().nombre||"Usuario";
+        }
+        const div=document.createElement("div");
+        div.classList.add("post");
+        div.innerHTML=`
+          <p><strong>${username}</strong></p>
+          <p>${post.content||""}</p>
+          <div class="reactions">
+            <button>👍</button>
+            <button>😂</button>
+            <button>❤️</button>
+          </div>
+          <small>${post.timestamp?post.timestamp.toDate().toLocaleString():""}</small>`;
+        feedDiv.appendChild(div);
       }
     });
+  }
 
-    async function publishPost(){
-      const content = document.getElementById("postContent").value.trim();
-      if(content==="") return;
-      await addDoc(collection(db,"chat"),{ uid:currentUser.uid, content, timestamp:serverTimestamp() });
-      document.getElementById("postContent").value="";
-    }
-    window.publishPost=publishPost;
+  function loadUsers(){
+    const q=query(collection(db,"onlineUsers"));
+    onSnapshot(q,(snapshot)=>{
+      const list=document.getElementById("userList");
+      list.innerHTML="";
+      snapshot.docs.forEach(d=>{
+        const data=d.data();
+        const li=document.createElement("li");
+        li.innerHTML = `<span style="color:${data.online?'lime':'gray'}">●</span> ${data.email}`;
+        list.appendChild(li);
+      });
+    });
+  }
 
-    function loadPosts(){
-      const q=query(collection(db,"chat"),orderBy("timestamp","desc"));
-      onSnapshot(q, async(snapshot)=>{
-        const feedDiv=document.getElementById("feed");
-        feedDiv.innerHTML="";
-        for(const docSnap of snapshot.docs){
-          const post=docSnap.data();
-          let username="Usuario";
-          if(post.uid){
-            const userDoc=await getDoc(doc(db,"users",post.uid));
-            if(userDoc.exists()) username=userDoc.data().nombre||"Usuario";
-          }
-          const div=document.createElement("div");
-          div.classList.add("post");
-          div.innerHTML=`
-            <p><strong>${username}</strong></p>
-            <p>${post.content||""}</p>
-            <div class="reactions">
-              <button>👍</button>
-              <button>😂</button>
-              <button>❤️</button>
-            </div>
-            <small>${post.timestamp?post.timestamp.toDate().toLocaleString():""}</small>`;
-          feedDiv.appendChild(div);
+  function monitorPrivateChat(){
+    const chatNotif=document.getElementById("chatNotif");
+    const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+    onSnapshot(q,(snapshot)=>{
+      let unread=0;
+      snapshot.docs.forEach(docSnap=>{
+        const msg=docSnap.data();
+        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+          unread++;
         }
       });
-    }
+      if(unread>0){
+        chatNotif.style.display="inline-block";
+        chatNotif.textContent=unread;
+      } else chatNotif.style.display="none";
+    });
+  }
 
-    function loadUsers(){
-      const q=query(collection(db,"onlineUsers"));
-      onSnapshot(q,(snapshot)=>{
-        const list=document.getElementById("userList");
-        list.innerHTML="";
-        snapshot.docs.forEach(d=>{
-          const data=d.data();
-          const li=document.createElement("li");
-          li.innerText=data.email;
-          list.appendChild(li);
-        });
-      });
-    }
-
-    function monitorPrivateChat(){
-      const chatNotif=document.getElementById("chatNotif");
-      const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
-      onSnapshot(q,(snapshot)=>{
-        let unread=0;
-        snapshot.docs.forEach(docSnap=>{
-          const msg=docSnap.data();
-          if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
-            unread++;
-          }
-        });
-        if(unread>0){
-          chatNotif.style.display="inline-block";
-          chatNotif.textContent=unread;
-        } else chatNotif.style.display="none";
-      });
-    }
-
-    document.getElementById("chatLink").addEventListener("click", async ()=>{
-      const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
-      onSnapshot(q,(snapshot)=>{
-        snapshot.docs.forEach(async(docSnap)=>{
-          const msg=docSnap.data();
-          if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
-            await updateDoc(doc(db,"privateChat",docSnap.id),{ readBy: arrayUnion(currentUser.uid) });
-          }
-        });
+  document.getElementById("chatLink").addEventListener("click", async ()=>{
+    const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+    onSnapshot(q,(snapshot)=>{
+      snapshot.docs.forEach(async(docSnap)=>{
+        const msg=docSnap.data();
+        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+          await updateDoc(doc(db,"privateChat",docSnap.id),{ readBy: arrayUnion(currentUser.uid) });
+        }
       });
     });
+  });
 
-    document.getElementById("logoutBtn").addEventListener("click",()=>{
-      signOut(auth).then(()=>window.location.href="index.html");
-    });
+  document.getElementById("logoutBtn").addEventListener("click",async ()=>{
+    if(currentUser) await deleteDoc(doc(db,"onlineUsers",currentUser.uid));
+    signOut(auth).then(()=>window.location.href="index.html");
+  });
 
-    document.getElementById("toggleMode").addEventListener("click",()=>{
-      document.body.classList.toggle("light");
-    });
+  document.getElementById("toggleMode").addEventListener("click",()=>{
+    document.body.classList.toggle("light");
+  });
 
-    document.getElementById("profile").addEventListener("click",()=>{
-      const menu=document.getElementById("profileMenu");
-      menu.style.display=menu.style.display==="block"?"none":"block";
-    });
-  </script>
+  document.getElementById("profile").addEventListener("click",()=>{
+    const menu=document.getElementById("profileMenu");
+    menu.style.display=menu.style.display==="block"?"none":"block";
+  });
+</script>
 </body>
 </html>
