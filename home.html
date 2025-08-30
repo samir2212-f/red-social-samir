@@ -38,7 +38,6 @@
       <div id="profile">👤 <span id="profileName">Cargando...</span>
         <div id="profileMenu">
           <button id="editNameBtn">✏️ Cambiar nombre</button>
-          <!-- 🔹 Solo admins verán este botón -->
           <button id="btnAdmin" style="display:none;">🛡️ Panel admin</button>
           <a href="#" id="logoutBtn">🚪 Salir</a>
         </div>
@@ -80,9 +79,6 @@
     doc, getDoc, setDoc, updateDoc, arrayUnion, deleteDoc, limit 
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // 🔹 UIDs que son admins
-  const ADMINS = ["ZIcK7apXDpY8fFzCYzLaTLQmWrP2", "xsAGAbKpfJWuprMKISAKDXyBZQ32"];
-
   // 🔹 Configuración Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
@@ -97,7 +93,7 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // 🔹 Configuración Supabase (tus datos reales)
+  // 🔹 Configuración Supabase
   const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
   const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
@@ -107,35 +103,9 @@
   onAuthStateChanged(auth, async (user) => {
     if(user){
       currentUser = user;
-      const userRef = doc(db,"users",user.uid);
-      const userSnap = await getDoc(userRef);
-      let displayName = user.email;
-      if(userSnap.exists() && userSnap.data().nombre){
-        displayName = userSnap.data().nombre;
-      }
-      document.getElementById("profileName").innerText = displayName;
-      document.getElementById("welcome").innerText = "Bienvenido, " + displayName;
-
-      // 🔹 Mostrar botón admin solo a admins
-      if(ADMINS.includes(user.uid)){
-        const btnAdmin = document.getElementById("btnAdmin");
-        btnAdmin.style.display = "block";
-        btnAdmin.addEventListener("click", ()=> window.location.href="paneladm.html");
-      }
-
-      // Registrar como online
-      await setDoc(doc(db,"onlineUsers",user.uid),{
-        email:user.email,
-        lastActive:serverTimestamp(),
-        online:true
-      });
-      window.addEventListener("beforeunload", async ()=>{ 
-        try{ await deleteDoc(doc(db,"onlineUsers",user.uid)); }catch(e){} 
-      });
-
+      document.getElementById("profileName").innerText = user.email;
+      document.getElementById("welcome").innerText = "Bienvenido, " + user.email;
       loadPosts();
-      loadUsers();
-      monitorPrivateChat();
     } else {
       window.location.href = "index.html";
     }
@@ -147,11 +117,10 @@
     const fileInput = document.getElementById("fileInput");
     let imageUrl = null;
 
-    // Subir imagen a Supabase si existe
     if(fileInput.files.length > 0){
       const file = fileInput.files[0];
       const fileName = Date.now() + "_" + file.name;
-      const { data, error } = await supabase.storage.from("posts").upload(fileName, file);
+      const { error } = await supabase.storage.from("posts").upload(fileName, file);
       if(error){ console.error("Error al subir archivo:", error.message); }
       else {
         const { data: publicData } = supabase.storage.from("posts").getPublicUrl(fileName);
@@ -159,7 +128,6 @@
       }
     }
 
-    // Guardar mensaje en Firestore
     if(content!=="" || imageUrl){
       await addDoc(collection(db,"chat"),{
         uid: currentUser.uid,
@@ -192,83 +160,11 @@
           <p><strong>${username}</strong></p>
           <p>${post.content||""}</p>
           ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Imagen">` : ""}
-          <div class="reactions">
-            <button>👍</button>
-            <button>😂</button>
-            <button>❤️</button>
-          </div>
           <small>${post.timestamp?post.timestamp.toDate().toLocaleString():""}</small>`;
         feedDiv.appendChild(div);
       }
     });
   }
-
-  function loadUsers(){
-    const qy=query(collection(db,"onlineUsers"));
-    onSnapshot(qy,(snapshot)=>{
-      const list=document.getElementById("userList");
-      list.innerHTML="";
-      snapshot.docs.forEach(d=>{
-        const data=d.data();
-        const li=document.createElement("li");
-        li.innerHTML = `<span style="color:${data.online?'lime':'gray'}">●</span> ${data.email}`;
-        list.appendChild(li);
-      });
-    });
-  }
-
-  function monitorPrivateChat(){
-    const chatNotif=document.getElementById("chatNotif");
-    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"), limit(50));
-    onSnapshot(qy,(snapshot)=>{
-      let unread=0;
-      snapshot.docs.forEach(docSnap=>{
-        const msg=docSnap.data();
-        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
-          unread++;
-        }
-      });
-      if(unread>0){
-        chatNotif.style.display="inline-block";
-        chatNotif.textContent=unread;
-      } else chatNotif.style.display="none";
-    });
-  }
-
-  document.getElementById("chatLink").addEventListener("click", async ()=>{
-    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"), limit(100));
-    onSnapshot(qy,(snapshot)=>{
-      snapshot.docs.forEach(async(docSnap)=>{
-        const msg=docSnap.data();
-        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
-          await updateDoc(doc(db,"privateChat",docSnap.id),{ readBy: arrayUnion(currentUser.uid) });
-        }
-      });
-    });
-  });
-
-  document.getElementById("editNameBtn").addEventListener("click", async ()=>{
-    const newName = prompt("Escribe tu nuevo nombre:");
-    if(newName && currentUser){
-      await setDoc(doc(db,"users",currentUser.uid), { nombre:newName }, { merge:true });
-      document.getElementById("profileName").innerText = newName;
-      document.getElementById("welcome").innerText = "Bienvenido, " + newName;
-    }
-  });
-
-  document.getElementById("logoutBtn").addEventListener("click",async ()=>{
-    try{ if(currentUser) await deleteDoc(doc(db,"onlineUsers",currentUser.uid)); }catch(e){}
-    signOut(auth).then(()=>window.location.href="index.html");
-  });
-
-  document.getElementById("toggleMode").addEventListener("click",()=>{
-    document.body.classList.toggle("light");
-  });
-
-  document.getElementById("profile").addEventListener("click",()=>{
-    const menu=document.getElementById("profileMenu");
-    menu.style.display=menu.style.display==="block"?"none":"block";
-  });
   </script>
 </body>
 </html>
