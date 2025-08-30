@@ -22,23 +22,39 @@
     .post small { display: block; color: #888; margin-top: 5px; }
     .post img { max-width: 100%; border-radius: 6px; margin-top: 10px; }
     .reactions button { margin-right: 5px; font-size: 14px; background: #333; }
-    #profile { position: relative; cursor: pointer; background: #222; padding: 8px 12px; border-radius: 6px; }
-    #profileMenu { display: none; position: absolute; right: 0; top: 40px; background: #222; border: 1px solid #333; border-radius: 6px; padding: 10px; min-width: 180px; }
+    #profile { position: relative; cursor: pointer; background: #222; padding: 8px 12px; border-radius: 6px; z-index: 20; }
+    #profileMenu { display: none; position: absolute; right: 0; top: 40px; background: #222; border: 1px solid #333; border-radius: 6px; padding: 10px; min-width: 180px; z-index: 30; }
     #profileMenu a, #profileMenu button { display: block; padding: 6px; color: #ccc; text-decoration: none; background:none; border:none; width:100%; text-align:left; cursor:pointer; }
     #profileMenu a:hover, #profileMenu button:hover { background: #333; color: #fff; }
     .light { background: #f4f4f4; color: #111; }
     .light nav, .light header, .light aside { background: #ddd; color: #111; }
     .light .post { background: #fff; color: #000; }
-    /* Menú desplegable del perfil */
-.profileMenu {
-  position: absolute; /* o fixed si quieres que no dependa del contenedor */
-  top: 100%;  /* Ajusta según donde quieras que caiga */
-  right: 0;   /* Lo alinea al lado derecho del botón */
-  background: #222;
-  border-radius: 8px;
-  padding: 10px;
-  z-index: 9999; /* Lo pone encima de todo */
-            }
+
+    /* ===== Modal / Panel Admin ===== */
+    #adminPanelBackdrop {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+      z-index: 1000; align-items: center; justify-content: center; padding: 20px;
+    }
+    #adminPanel {
+      background: #1a1a1a; border: 1px solid #333; border-radius: 10px; width: 100%;
+      max-width: 980px; max-height: 90vh; overflow: auto; padding: 16px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    }
+    #adminPanel h3 { margin: 0 0 10px 0; }
+    .admin-bar { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .admin-section { background: #222; border: 1px solid #333; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .admin-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .admin-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed #333; }
+    .admin-row:last-child { border-bottom: none; }
+    .admin-input { background: #2a2a2a; border: 1px solid #444; color: #eee; border-radius: 6px; padding: 6px 8px; }
+    .admin-pill { font-size: 12px; padding: 2px 6px; border-radius: 999px; border: 1px solid #444; }
+    .pill-ok { color: #8f8; border-color: #3a3; }
+    .pill-bad { color: #f88; border-color: #a33; }
+    .admin-close { margin-left: auto; background: #444; }
+    .admin-link-hidden { display:none; }
+    @media (max-width: 800px){
+      .admin-grid { grid-template-columns: 1fr; }
+    }
   </style>
 </head>
 <body>
@@ -57,6 +73,8 @@
       <a href="reels.html">🎥 Subir Reels</a>
       <a href="feed.html">📺 Ver Reels</a>
       <a href="chat.html" id="chatLink">💌 Chat <span id="chatNotif">0</span></a>
+      <!-- aparece solo si es admin -->
+      <a href="#" id="adminLink" class="admin-link-hidden">⚙️ Panel Admin</a>
       <a href="#" id="toggleMode">🌙</a>
     </nav>
     <main>
@@ -77,12 +95,42 @@
     <ul id="userList"></ul>
   </aside>
 
+  <!-- ===== Modal Panel Admin ===== -->
+  <div id="adminPanelBackdrop">
+    <div id="adminPanel">
+      <div class="admin-bar">
+        <h3>⚙️ Panel Admin</h3>
+        <button id="adminRefresh" class="admin-input">🔄 Actualizar</button>
+        <button id="adminClose" class="admin-close">✖️ Cerrar</button>
+      </div>
+
+      <div class="admin-grid">
+        <!-- Usuarios -->
+        <div class="admin-section">
+          <h4>👥 Usuarios</h4>
+          <div id="adminUsers"></div>
+        </div>
+
+        <!-- Posts -->
+        <div class="admin-section">
+          <h4>📝 Últimos posts</h4>
+          <div id="adminPosts"></div>
+        </div>
+      </div>
+
+      <div class="admin-section">
+        <h4>📊 Sistema</h4>
+        <div id="adminStats">Cargando…</div>
+      </div>
+    </div>
+  </div>
+
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { 
-    getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, 
-    doc, getDoc, setDoc, updateDoc, arrayUnion, deleteDoc 
+  import {
+    getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot,
+    doc, getDoc, getDocs, setDoc, updateDoc, arrayUnion, deleteDoc, limit
   } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
   const firebaseConfig = {
@@ -98,34 +146,41 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
+  // ====== Admins autorizados
+  const ADMIN_UIDS = new Set([
+    "ZIcK7apXDpY8fFzCYzLaTLQmWrP2",
+    "xsAGAbKpfJWuprMKISAKDXyBZQ32"
+  ]);
+
   let currentUser;
 
   onAuthStateChanged(auth, async (user) => {
     if(user){
       currentUser = user;
 
-      // Revisar si ya tiene nombre personalizado
+      // nombre para mostrar
       const userRef = doc(db,"users",user.uid);
       const userSnap = await getDoc(userRef);
-
       let displayName = user.email;
       if(userSnap.exists() && userSnap.data().nombre){
         displayName = userSnap.data().nombre;
       }
-
       document.getElementById("profileName").innerText = displayName;
       document.getElementById("welcome").innerText = "Bienvenido, " + displayName;
 
-      // Registrar como en línea
+      // presencia
       await setDoc(doc(db,"onlineUsers",user.uid),{
-        email:user.email,
-        lastActive:serverTimestamp(),
-        online:true
+        email:user.email, lastActive:serverTimestamp(), online:true
       });
-
       window.addEventListener("beforeunload", async ()=>{
         await deleteDoc(doc(db,"onlineUsers",user.uid));
       });
+
+      // mostrar link admin si corresponde
+      if (ADMIN_UIDS.has(user.uid)) {
+        const adminLink = document.getElementById("adminLink");
+        adminLink.classList.remove("admin-link-hidden");
+      }
 
       loadPosts();
       loadUsers();
@@ -144,8 +199,8 @@
   window.publishPost=publishPost;
 
   function loadPosts(){
-    const q=query(collection(db,"chat"),orderBy("timestamp","desc"));
-    onSnapshot(q, async(snapshot)=>{
+    const qy=query(collection(db,"chat"),orderBy("timestamp","desc"));
+    onSnapshot(qy, async(snapshot)=>{
       const feedDiv=document.getElementById("feed");
       feedDiv.innerHTML="";
       for(const docSnap of snapshot.docs){
@@ -172,8 +227,8 @@
   }
 
   function loadUsers(){
-    const q=query(collection(db,"onlineUsers"));
-    onSnapshot(q,(snapshot)=>{
+    const qy=query(collection(db,"onlineUsers"));
+    onSnapshot(qy,(snapshot)=>{
       const list=document.getElementById("userList");
       list.innerHTML="";
       snapshot.docs.forEach(d=>{
@@ -187,8 +242,8 @@
 
   function monitorPrivateChat(){
     const chatNotif=document.getElementById("chatNotif");
-    const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
-    onSnapshot(q,(snapshot)=>{
+    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+    onSnapshot(qy,(snapshot)=>{
       let unread=0;
       snapshot.docs.forEach(docSnap=>{
         const msg=docSnap.data();
@@ -204,8 +259,8 @@
   }
 
   document.getElementById("chatLink").addEventListener("click", async ()=>{
-    const q=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
-    onSnapshot(q,(snapshot)=>{
+    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"));
+    onSnapshot(qy,(snapshot)=>{
       snapshot.docs.forEach(async(docSnap)=>{
         const msg=docSnap.data();
         if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
@@ -215,7 +270,7 @@
     });
   });
 
-  // 🔹 Cambiar nombre solo dueño
+  // Cambiar nombre (solo dueño de su perfil)
   document.getElementById("editNameBtn").addEventListener("click", async ()=>{
     const newName = prompt("Escribe tu nuevo nombre:");
     if(newName && currentUser){
@@ -238,6 +293,139 @@
     const menu=document.getElementById("profileMenu");
     menu.style.display=menu.style.display==="block"?"none":"block";
   });
-</script>
+
+  /* ====== Lógica del Panel Admin ====== */
+
+  const adminBackdrop = document.getElementById("adminPanelBackdrop");
+  const adminLink = document.getElementById("adminLink");
+  const adminClose = document.getElementById("adminClose");
+  const adminRefresh = document.getElementById("adminRefresh");
+  const adminUsersBox = document.getElementById("adminUsers");
+  const adminPostsBox = document.getElementById("adminPosts");
+  const adminStatsBox = document.getElementById("adminStats");
+
+  adminLink?.addEventListener("click", async (e)=>{
+    e.preventDefault();
+    if (!currentUser || !ADMIN_UIDS.has(currentUser.uid)) return;
+    adminBackdrop.style.display = "flex";
+    await loadAdminData();
+  });
+
+  adminClose.addEventListener("click", ()=>{
+    adminBackdrop.style.display = "none";
+  });
+
+  adminRefresh.addEventListener("click", loadAdminData);
+
+  async function loadAdminData(){
+    // Usuarios (colección users)
+    try{
+      const usersSnap = await getDocs(collection(db,"users"));
+      if (usersSnap.empty){
+        adminUsersBox.innerHTML = `<div class="admin-row">No hay documentos en "users". Asegúrate de guardar perfil al menos una vez.</div>`;
+      } else {
+        adminUsersBox.innerHTML = "";
+        usersSnap.forEach(uDoc=>{
+          const data = uDoc.data();
+          const uid = uDoc.id;
+          const nombre = data.nombre || "(sin nombre)";
+          const email = data.email || data.correo || "";
+          const banned = !!data.banned;
+
+          const row = document.createElement("div");
+          row.className = "admin-row";
+          row.innerHTML = `
+            <div style="min-width:120px;"><span class="admin-pill ${banned?'pill-bad':'pill-ok'}">${banned?'BLOQUEADO':'ACTIVO'}</span></div>
+            <div style="flex:1;">
+              <div style="font-weight:bold;">${nombre}</div>
+              <div style="font-size:12px; color:#aaa;">UID: ${uid}${email?(" · " + email):""}</div>
+            </div>
+            <input class="admin-input" id="name-${uid}" value="${nombre}">
+            <button class="admin-input" data-save="${uid}">💾 Guardar</button>
+            <button class="admin-input" data-ban="${uid}">${banned?'🔓 Desbloquear':'🔒 Bloquear'}</button>
+          `;
+          adminUsersBox.appendChild(row);
+        });
+
+        // listeners
+        adminUsersBox.querySelectorAll("[data-save]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const uid = btn.getAttribute("data-save");
+            const input = document.getElementById(`name-${uid}`);
+            const newName = input.value.trim();
+            if(!newName) return;
+            await setDoc(doc(db,"users",uid), { nombre:newName }, { merge:true });
+            btn.textContent = "✅ Guardado";
+            setTimeout(()=>btn.textContent="💾 Guardar", 1200);
+          });
+        });
+        adminUsersBox.querySelectorAll("[data-ban]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const uid = btn.getAttribute("data-ban");
+            const txt = btn.textContent.includes("Desbloquear");
+            const newState = !txt; // si dice desbloquear → estaba bloqueado → pasar a activo (false)
+            await setDoc(doc(db,"users",uid), { banned:newState }, { merge:true });
+            await loadAdminData();
+          });
+        });
+      }
+    } catch(e){
+      adminUsersBox.innerHTML = `<div class="admin-row">Error leyendo usuarios: ${e}</div>`;
+    }
+
+    // Posts (últimos 50)
+    try{
+      adminPostsBox.innerHTML = "Cargando…";
+      const postsSnap = await getDocs(query(collection(db,"chat"), orderBy("timestamp","desc"), limit(50)));
+      adminPostsBox.innerHTML = "";
+      if (postsSnap.empty){
+        adminPostsBox.innerHTML = `<div class="admin-row">No hay posts.</div>`;
+      } else {
+        postsSnap.forEach(pDoc=>{
+          const data = pDoc.data();
+          const id = pDoc.id;
+          const content = (data.content||"").toString().slice(0,120);
+          const time = data.timestamp ? data.timestamp.toDate().toLocaleString() : "";
+          const row = document.createElement("div");
+          row.className = "admin-row";
+          row.innerHTML = `
+            <div style="flex:1;">
+              <div style="font-size:12px; color:#aaa;">ID: ${id}</div>
+              <div>${content}</div>
+              <div style="font-size:12px; color:#888;">${time}</div>
+            </div>
+            <button class="admin-input" data-del="${id}">🗑️ Eliminar</button>
+          `;
+          adminPostsBox.appendChild(row);
+        });
+        adminPostsBox.querySelectorAll("[data-del]").forEach(btn=>{
+          btn.addEventListener("click", async ()=>{
+            const id = btn.getAttribute("data-del");
+            if(confirm("¿Eliminar este post?")){
+              await deleteDoc(doc(db,"chat",id));
+              btn.textContent = "✅ Eliminado";
+              btn.disabled = true;
+            }
+          });
+        });
+      }
+    } catch(e){
+      adminPostsBox.innerHTML = `<div class="admin-row">Error cargando posts: ${e}</div>`;
+    }
+
+    // Stats simples
+    try{
+      const usersCount = (await getDocs(collection(db,"users"))).size;
+      const onlineCount = (await getDocs(collection(db,"onlineUsers"))).size;
+      adminStatsBox.innerHTML = `
+        <div class="admin-row">Usuarios (users): <b>${usersCount}</b></div>
+        <div class="admin-row">En línea (onlineUsers): <b>${onlineCount}</b></div>
+        <div class="admin-row" style="font-size:12px;color:#aaa;">Tip: para eliminar cuentas de Auth o forzar reglas, hazlo con Cloud Functions o desde la consola de Firebase.</div>
+      `;
+    } catch(e){
+      adminStatsBox.innerHTML = `<div class="admin-row">No se pudieron calcular stats: ${e}</div>`;
+    }
+  }
+  </script>
 </body>
 </html>
