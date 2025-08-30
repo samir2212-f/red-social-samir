@@ -69,6 +69,9 @@
     <ul id="userList"></ul>
   </aside>
 
+  <!-- Supabase -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+
   <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
   import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -80,6 +83,7 @@
   // 🔹 UIDs que son admins
   const ADMINS = ["ZIcK7apXDpY8fFzCYzLaTLQmWrP2", "xsAGAbKpfJWuprMKISAKDXyBZQ32"];
 
+  // 🔹 Configuración Firebase
   const firebaseConfig = {
     apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
     authDomain: "miredsocial-b50ce.firebaseapp.com",
@@ -92,6 +96,11 @@
   const app = initializeApp(firebaseConfig);
   const auth = getAuth(app);
   const db = getFirestore(app);
+
+  // 🔹 Configuración Supabase (pon aquí tus datos)
+  const supabaseUrl = "https://TU-PROJECT.supabase.co";
+  const supabaseKey = "TU-PUBLIC-ANON-KEY";
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
   let currentUser;
 
@@ -132,11 +141,36 @@
     }
   });
 
+  // 🔹 Publicar mensaje con texto + imagen en Supabase
   async function publishPost(){
     const content = document.getElementById("postContent").value.trim();
-    if(content==="") return;
-    await addDoc(collection(db,"chat"),{ uid:currentUser.uid, content, timestamp:serverTimestamp() });
+    const fileInput = document.getElementById("fileInput");
+    let imageUrl = null;
+
+    // Subir imagen a Supabase si existe
+    if(fileInput.files.length > 0){
+      const file = fileInput.files[0];
+      const fileName = Date.now() + "_" + file.name;
+      const { data, error } = await supabase.storage.from("posts").upload(fileName, file);
+      if(error){ console.error("Error al subir archivo:", error.message); }
+      else {
+        const { data: publicData } = supabase.storage.from("posts").getPublicUrl(fileName);
+        imageUrl = publicData.publicUrl;
+      }
+    }
+
+    // Guardar mensaje en Firestore
+    if(content!=="" || imageUrl){
+      await addDoc(collection(db,"chat"),{
+        uid: currentUser.uid,
+        content,
+        imageUrl,
+        timestamp: serverTimestamp()
+      });
+    }
+
     document.getElementById("postContent").value="";
+    fileInput.value="";
   }
   window.publishPost=publishPost;
 
@@ -157,6 +191,7 @@
         div.innerHTML=`
           <p><strong>${username}</strong></p>
           <p>${post.content||""}</p>
+          ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Imagen">` : ""}
           <div class="reactions">
             <button>👍</button>
             <button>😂</button>
