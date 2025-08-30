@@ -3,253 +3,237 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel Admin</title>
+  <title>Red Social de Samir 🚀</title>
   <style>
-    body {
-      background:#0d1117;
-      color:#eee;
-      font-family: Arial, sans-serif;
-      margin:0;
-      padding:20px;
-    }
-    h2 {
-      color:#58a6ff;
-    }
-    .admin-section {
-      background:#161b22;
-      padding:15px;
-      margin-bottom:20px;
-      border-radius:10px;
-      box-shadow:0 2px 5px rgba(0,0,0,0.4);
-    }
-    .admin-section h4 {
-      margin-top:0;
-      color:#ffb347;
-    }
-    .admin-row {
-      padding:8px;
-      border-bottom:1px solid #30363d;
-      display:flex;
-      justify-content:space-between;
-      align-items:center;
-    }
-    .admin-row:last-child {
-      border-bottom:none;
-    }
-    button.admin-input {
-      background:#238636;
-      border:none;
-      color:white;
-      padding:5px 10px;
-      border-radius:6px;
-      cursor:pointer;
-    }
-    button.admin-input:hover {
-      background:#2ea043;
-    }
-    .admin-grid {
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap:20px;
-    }
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; min-height: 100vh; }
+    header { background: linear-gradient(90deg, #222, #444); padding: 15px 20px; font-size: 20px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    nav { background: #222; display: flex; justify-content: center; gap: 20px; padding: 10px; }
+    nav a { color: #ccc; text-decoration: none; font-weight: bold; position: relative; padding: 6px 12px; border-radius: 6px; }
+    nav a:hover { background: #333; color: #fff; }
+    #chatNotif { display: none; background: red; color: white; font-size: 12px; padding: 2px 6px; border-radius: 50%; position: absolute; top: -6px; right: -8px; }
+    main { flex: 1; padding: 20px; }
+    aside { width: 240px; background: #1c1c1c; padding: 15px; border-left: 2px solid #333; }
+    .post-box { background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
+    textarea, input[type="file"] { width: 100%; padding: 10px; border-radius: 8px; border: none; outline: none; resize: none; background: #333; color: #eee; margin-bottom: 10px; }
+    button { margin-top: 10px; padding: 10px 15px; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; }
+    button:hover { background: #09c; }
+    .post { background: #1a1a1a; margin-bottom: 15px; padding: 15px; border-radius: 8px; box-shadow: 0px 0px 5px rgba(255,255,255,0.1); }
+    .post strong { color: #0af; }
+    .post small { display: block; color: #888; margin-top: 5px; }
+    .post img { max-width: 100%; border-radius: 6px; margin-top: 10px; }
+    .reactions button { margin-right: 5px; font-size: 14px; background: #333; }
+    #profile { position: relative; cursor: pointer; background: #222; padding: 8px 12px; border-radius: 6px; }
+    #profileMenu { display: none; position: absolute; right: 0; top: 40px; background: #222; border: 1px solid #333; border-radius: 6px; padding: 10px; min-width: 180px; z-index: 9999; }
+    #profileMenu a, #profileMenu button { display: block; padding: 6px; color: #ccc; text-decoration: none; background:none; border:none; width:100%; text-align:left; cursor:pointer; }
+    #profileMenu a:hover, #profileMenu button:hover { background:#333; color:#fff; }
+    .light { background: #f4f4f4; color: #111; }
+    .light nav, .light header, .light aside { background: #ddd; color: #111; }
+    .light .post { background: #fff; color: #000; }
   </style>
 </head>
 <body>
-  <h2>⚡ Panel de Administrador</h2>
-  <div id="adminContent">Cargando...</div>
+  <div style="flex:1; display:flex; flex-direction:column;">
+    <header>
+      <div>💬 Hablen pe chubeibis</div>
+      <div id="profile">👤 <span id="profileName">Cargando...</span>
+        <div id="profileMenu">
+          <button id="editNameBtn">✏️ Cambiar nombre</button>
+          <!-- 🔹 Solo admins verán este botón -->
+          <button id="btnAdmin" style="display:none;">🛡️ Panel admin</button>
+          <a href="#" id="logoutBtn">🚪 Salir</a>
+        </div>
+      </div>
+    </header>
+    <nav>
+      <a href="home.html">🏠 Inicio</a>
+      <a href="reels.html">🎥 Subir Reels</a>
+      <a href="feed.html">📺 Ver Reels</a>
+      <a href="chat.html" id="chatLink">💌 Chat <span id="chatNotif">0</span></a>
+      <a href="#" id="toggleMode">🌙</a>
+    </nav>
+    <main>
+      <h2 id="welcome">Bienvenido</h2>
+      <section class="post-box">
+        <textarea id="postContent" rows="3" placeholder="Escribe un mensaje..."></textarea>
+        <input type="file" id="fileInput">
+        <button onclick="publishPost()">Enviar mensaje</button>
+      </section>
+      <section>
+        <h2>📝 Mensajes</h2>
+        <div id="feed"></div>
+      </section>
+    </main>
+  </div>
+  <aside>
+    <h3>🟢 Usuarios en línea</h3>
+    <ul id="userList"></ul>
+  </aside>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-    import { 
-      getFirestore, collection, getDocs, doc, deleteDoc, query, orderBy, limit, getDoc 
-    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-    import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+  import { 
+    getFirestore, collection, addDoc, serverTimestamp, query, orderBy, onSnapshot, 
+    doc, getDoc, setDoc, updateDoc, arrayUnion, deleteDoc, limit 
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    const firebaseConfig = {
-      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
-      authDomain: "miredsocial-b50ce.firebaseapp.com",
-      projectId: "miredsocial-b50ce",
-      storageBucket: "miredsocial-b50ce.appspot.com",
-      messagingSenderId: "1087784350299",
-      appId: "1:1087784350299:web:4c6b960635700994ef457e",
-      measurementId: "G-97HJGYQX6B"
-    };
+  // 🔹 UIDs que son admins
+  const ADMINS = ["ZIcK7apXDpY8fFzCYzLaTLQmWrP2", "xsAGAbKpfJWuprMKISAKDXyBZQ32"];
 
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+    authDomain: "miredsocial-b50ce.firebaseapp.com",
+    projectId: "miredsocial-b50ce",
+    storageBucket: "miredsocial-b50ce.appspot.com",
+    messagingSenderId: "1087784350299",
+    appId: "1:1087784350299:web:4c6b960635700994ef457e"
+  };
 
-    const ADMIN_UIDS = [
-      "ZIcK7apXDpY8fFzCYzLaTLQmWrP2",
-      "xsAGAbKpfJWuprMKISAKDXyBZQ32"
-    ];
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
 
-    const adminContent = document.getElementById("adminContent");
+  let currentUser;
 
-    onAuthStateChanged(auth, async user=>{
-      if(!user){
-        adminContent.innerHTML = "<p>Debes iniciar sesión.</p>";
-        return;
+  onAuthStateChanged(auth, async (user) => {
+    if(user){
+      currentUser = user;
+      const userRef = doc(db,"users",user.uid);
+      const userSnap = await getDoc(userRef);
+      let displayName = user.email;
+      if(userSnap.exists() && userSnap.data().nombre){
+        displayName = userSnap.data().nombre;
       }
-      if(!ADMIN_UIDS.includes(user.uid)){
-        adminContent.innerHTML = "<p>No tienes permisos de administrador.</p>";
-        return;
-      }
-      loadAdminData();
-    });
+      document.getElementById("profileName").innerText = displayName;
+      document.getElementById("welcome").innerText = "Bienvenido, " + displayName;
 
-    async function loadAdminData(){
-      adminContent.innerHTML = `
-        <div class="admin-grid">
-          <!-- Usuarios -->
-          <div class="admin-section">
-            <h4>👥 Usuarios</h4>
-            <div id="adminUsers">Cargando...</div>
-          </div>
-
-          <!-- Posts -->
-          <div class="admin-section">
-            <h4>📝 Últimos posts</h4>
-            <div id="adminPosts">Cargando...</div>
-          </div>
-        </div>
-
-        <!-- Mensajes privados -->
-        <div class="admin-section">
-          <h4>💌 Mensajes privados</h4>
-          <div id="adminPrivates">Cargando...</div>
-        </div>
-
-        <!-- Stats -->
-        <div class="admin-section">
-          <h4>📊 Sistema</h4>
-          <div id="adminStats">Cargando...</div>
-        </div>
-      `;
-
-      const adminUsers = document.getElementById("adminUsers");
-      const adminPosts = document.getElementById("adminPosts");
-      const adminPrivates = document.getElementById("adminPrivates");
-      const adminStats = document.getElementById("adminStats");
-
-      // Usuarios
-      try{
-        const usersSnap = await getDocs(collection(db,"users"));
-        adminUsers.innerHTML = "";
-        usersSnap.forEach(docu=>{
-          const data = docu.data();
-          const row = document.createElement("div");
-          row.className = "admin-row";
-          row.innerHTML = `
-            <div><b>${data.nombre||"Sin nombre"}</b><br>
-            <small>${data.email||""}</small></div>
-            <button class="admin-input" data-deluser="${docu.id}">🗑️ Eliminar</button>
-          `;
-          adminUsers.appendChild(row);
-        });
-        adminUsers.querySelectorAll("[data-deluser]").forEach(btn=>{
-          btn.addEventListener("click", async ()=>{
-            const id = btn.getAttribute("data-deluser");
-            if(confirm("¿Eliminar usuario?")){
-              await deleteDoc(doc(db,"users",id));
-              btn.textContent="✅ Eliminado";
-              btn.disabled=true;
-            }
-          });
-        });
-      }catch(e){ adminUsers.innerHTML="Error: "+e; }
-
-      // Posts
-      try{
-        const postsSnap = await getDocs(query(collection(db,"posts"),orderBy("timestamp","desc"),limit(20)));
-        adminPosts.innerHTML="";
-        postsSnap.forEach(docu=>{
-          const data = docu.data();
-          const row = document.createElement("div");
-          row.className = "admin-row";
-          row.innerHTML = `
-            <div><b>${data.author||"Anon"}</b><br>
-            ${data.content.slice(0,80)}</div>
-            <button class="admin-input" data-delpost="${docu.id}">🗑️ Eliminar</button>
-          `;
-          adminPosts.appendChild(row);
-        });
-        adminPosts.querySelectorAll("[data-delpost]").forEach(btn=>{
-          btn.addEventListener("click", async ()=>{
-            const id = btn.getAttribute("data-delpost");
-            if(confirm("¿Eliminar post?")){
-              await deleteDoc(doc(db,"posts",id));
-              btn.textContent="✅ Eliminado";
-              btn.disabled=true;
-            }
-          });
-        });
-      }catch(e){ adminPosts.innerHTML="Error: "+e; }
-
-      // Mensajes privados
-      try{
-        adminPrivates.innerHTML = "Cargando…";
-        const privSnap = await getDocs(query(
-          collection(db,"privateChat"),
-          orderBy("timestamp","desc"),
-          limit(100)
-        ));
-        adminPrivates.innerHTML = "";
-        if (privSnap.empty){
-          adminPrivates.innerHTML = `<div class="admin-row">No hay mensajes privados.</div>`;
-        } else {
-          for(const pDoc of privSnap.docs){
-            const data = pDoc.data();
-            const id = pDoc.id;
-            const content = (data.content||"").toString().slice(0,120);
-            const time = data.timestamp ? data.timestamp.toDate().toLocaleString() : "";
-            let sender = "Usuario";
-            if(data.uid){
-              const u = await getDoc(doc(db,"users",data.uid));
-              if(u.exists()) sender = u.data().nombre || "Usuario";
-            }
-
-            const row = document.createElement("div");
-            row.className = "admin-row";
-            row.innerHTML = `
-              <div style="flex:1;">
-                <div style="font-weight:bold;">${sender}</div>
-                <div style="font-size:12px; color:#aaa;">ID: ${id}</div>
-                <div>${content}</div>
-                <div style="font-size:12px; color:#888;">${time}</div>
-              </div>
-              <button class="admin-input" data-delpm="${id}">🗑️ Eliminar</button>
-            `;
-            adminPrivates.appendChild(row);
-          }
-
-          adminPrivates.querySelectorAll("[data-delpm]").forEach(btn=>{
-            btn.addEventListener("click", async ()=>{
-              const id = btn.getAttribute("data-delpm");
-              if(confirm("¿Eliminar este mensaje privado?")){
-                await deleteDoc(doc(db,"privateChat",id));
-                btn.textContent = "✅ Eliminado";
-                btn.disabled = true;
-              }
-            });
-          });
-        }
-      } catch(e){
-        adminPrivates.innerHTML = `<div class="admin-row">Error cargando privados: ${e}</div>`;
+      // 🔹 Mostrar botón admin solo a admins
+      if(ADMINS.includes(user.uid)){
+        const btnAdmin = document.getElementById("btnAdmin");
+        btnAdmin.style.display = "block";
+        btnAdmin.addEventListener("click", ()=> window.location.href="paneladm.html");
       }
 
-      // Stats
-      try{
-        const usersSnap = await getDocs(collection(db,"users"));
-        const postsSnap = await getDocs(collection(db,"posts"));
-        const privSnap = await getDocs(collection(db,"privateChat"));
-        adminStats.innerHTML = `
-          <p>👥 Usuarios: ${usersSnap.size}</p>
-          <p>📝 Posts: ${postsSnap.size}</p>
-          <p>💌 Mensajes privados: ${privSnap.size}</p>
-        `;
-      }catch(e){ adminStats.innerHTML="Error: "+e; }
+      // Registrar como online
+      await setDoc(doc(db,"onlineUsers",user.uid),{
+        email:user.email,
+        lastActive:serverTimestamp(),
+        online:true
+      });
+      window.addEventListener("beforeunload", async ()=>{ 
+        try{ await deleteDoc(doc(db,"onlineUsers",user.uid)); }catch(e){} 
+      });
+
+      loadPosts();
+      loadUsers();
+      monitorPrivateChat();
+    } else {
+      window.location.href = "index.html";
     }
+  });
+
+  async function publishPost(){
+    const content = document.getElementById("postContent").value.trim();
+    if(content==="") return;
+    await addDoc(collection(db,"chat"),{ uid:currentUser.uid, content, timestamp:serverTimestamp() });
+    document.getElementById("postContent").value="";
+  }
+  window.publishPost=publishPost;
+
+  function loadPosts(){
+    const qy = query(collection(db,"chat"),orderBy("timestamp","desc"), limit(50));
+    onSnapshot(qy, async(snapshot)=>{
+      const feedDiv=document.getElementById("feed");
+      feedDiv.innerHTML="";
+      for(const docSnap of snapshot.docs){
+        const post=docSnap.data();
+        let username="Usuario";
+        if(post.uid){
+          const userDoc=await getDoc(doc(db,"users",post.uid));
+          if(userDoc.exists()) username=userDoc.data().nombre||"Usuario";
+        }
+        const div=document.createElement("div");
+        div.classList.add("post");
+        div.innerHTML=`
+          <p><strong>${username}</strong></p>
+          <p>${post.content||""}</p>
+          <div class="reactions">
+            <button>👍</button>
+            <button>😂</button>
+            <button>❤️</button>
+          </div>
+          <small>${post.timestamp?post.timestamp.toDate().toLocaleString():""}</small>`;
+        feedDiv.appendChild(div);
+      }
+    });
+  }
+
+  function loadUsers(){
+    const qy=query(collection(db,"onlineUsers"));
+    onSnapshot(qy,(snapshot)=>{
+      const list=document.getElementById("userList");
+      list.innerHTML="";
+      snapshot.docs.forEach(d=>{
+        const data=d.data();
+        const li=document.createElement("li");
+        li.innerHTML = `<span style="color:${data.online?'lime':'gray'}">●</span> ${data.email}`;
+        list.appendChild(li);
+      });
+    });
+  }
+
+  function monitorPrivateChat(){
+    const chatNotif=document.getElementById("chatNotif");
+    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"), limit(50));
+    onSnapshot(qy,(snapshot)=>{
+      let unread=0;
+      snapshot.docs.forEach(docSnap=>{
+        const msg=docSnap.data();
+        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+          unread++;
+        }
+      });
+      if(unread>0){
+        chatNotif.style.display="inline-block";
+        chatNotif.textContent=unread;
+      } else chatNotif.style.display="none";
+    });
+  }
+
+  document.getElementById("chatLink").addEventListener("click", async ()=>{
+    const qy=query(collection(db,"privateChat"),orderBy("timestamp","desc"), limit(100));
+    onSnapshot(qy,(snapshot)=>{
+      snapshot.docs.forEach(async(docSnap)=>{
+        const msg=docSnap.data();
+        if(msg.uid!==currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))){
+          await updateDoc(doc(db,"privateChat",docSnap.id),{ readBy: arrayUnion(currentUser.uid) });
+        }
+      });
+    });
+  });
+
+  document.getElementById("editNameBtn").addEventListener("click", async ()=>{
+    const newName = prompt("Escribe tu nuevo nombre:");
+    if(newName && currentUser){
+      await setDoc(doc(db,"users",currentUser.uid), { nombre:newName }, { merge:true });
+      document.getElementById("profileName").innerText = newName;
+      document.getElementById("welcome").innerText = "Bienvenido, " + newName;
+    }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click",async ()=>{
+    try{ if(currentUser) await deleteDoc(doc(db,"onlineUsers",currentUser.uid)); }catch(e){}
+    signOut(auth).then(()=>window.location.href="index.html");
+  });
+
+  document.getElementById("toggleMode").addEventListener("click",()=>{
+    document.body.classList.toggle("light");
+  });
+
+  document.getElementById("profile").addEventListener("click",()=>{
+    const menu=document.getElementById("profileMenu");
+    menu.style.display=menu.style.display==="block"?"none":"block";
+  });
   </script>
 </body>
 </html>
