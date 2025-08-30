@@ -63,18 +63,19 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
     import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
+    // 🔹 Config real de tu proyecto
     const firebaseConfig = {
-      apiKey: "TU_API_KEY",
-      authDomain: "TU_DOMINIO.firebaseapp.com",
-      projectId: "TU_PROJECT_ID",
-      storageBucket: "TU_BUCKET",
-      messagingSenderId: "TU_ID",
-      appId: "TU_APP_ID"
+      apiKey: "AIzaSyAbKtevrs-_LJuuNEh4IKX3o_vvpFddO5k",
+      authDomain: "miredsocial-b50ce.firebaseapp.com",
+      projectId: "miredsocial-b50ce",
+      storageBucket: "miredsocial-b50ce.appspot.com",
+      messagingSenderId: "1087784350299",
+      appId: "1:1087784350299:web:4c6b960635700994ef457e"
     };
     const app = initializeApp(firebaseConfig);
     const db = getFirestore(app);
 
-    // 🔹 Navegación tabs
+    // 🔹 Navegación entre tabs
     const navBtns = document.querySelectorAll("nav button");
     const sections = document.querySelectorAll("main section");
     navBtns.forEach(btn=>{
@@ -88,10 +89,7 @@
 
     // 🚨 Palabras prohibidas
     const malas = ["tonto","mierda","puta","imbecil","cabrón","pendejo"];
-
-    function contieneMala(txt){
-      return malas.some(p => txt?.toLowerCase().includes(p));
-    }
+    const contieneMala = txt => malas.some(p => txt?.toLowerCase().includes(p));
 
     // 📌 Privados con groserías
     const q1 = query(collection(db,"privateChat"), orderBy("timestamp","desc"), limit(200));
@@ -131,8 +129,8 @@
       });
     });
 
-    // 📌 Usuarios con renombrar
-    onSnapshot(collection(db,"usuarios"), snap=>{
+    // 📌 Usuarios con renombrar (ojo: en tu main usas "users", no "usuarios")
+    onSnapshot(collection(db,"users"), snap=>{
       const ul = document.getElementById("usersList");
       ul.innerHTML="";
       snap.docs.forEach(d=>{
@@ -149,16 +147,16 @@
         li.querySelector(".save").onclick=async()=>{
           const nuevo = li.querySelector(".rename").value.trim();
           if(nuevo){
-            await updateDoc(doc(db,"usuarios",d.id), { nombre:nuevo });
+            await updateDoc(doc(db,"users",d.id), { nombre:nuevo });
           }
         };
-        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"usuarios",d.id));
+        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"users",d.id));
         ul.appendChild(li);
       });
     });
 
-    // 📌 Posts
-    onSnapshot(collection(db,"posts"), snap=>{
+    // 📌 Posts (en tu app principal los mensajes están en "chat", no en "posts")
+    onSnapshot(collection(db,"chat"), snap=>{
       const ul = document.getElementById("postsList");
       ul.innerHTML="";
       snap.docs.forEach(d=>{
@@ -169,7 +167,7 @@
           <div>${p.content||""}</div>
           <div class="actions"><button class="del">🗑️ Eliminar</button></div>
         `;
-        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"posts",d.id));
+        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"chat",d.id));
         ul.appendChild(li);
       });
     });
