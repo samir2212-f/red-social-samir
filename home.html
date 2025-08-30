@@ -97,9 +97,9 @@
   const auth = getAuth(app);
   const db = getFirestore(app);
 
-  // 🔹 Configuración Supabase (pon aquí tus datos)
-  const supabaseUrl = "https://TU-PROJECT.supabase.co";
-  const supabaseKey = "TU-PUBLIC-ANON-KEY";
+  // 🔹 Configuración Supabase (tus datos reales)
+  const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
   const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
   let currentUser;
