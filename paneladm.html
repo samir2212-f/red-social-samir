@@ -2,52 +2,67 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <title>Panel Admin</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Panel de Administración</title>
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js"></script>
   <style>
-    body{ font-family:sans-serif; background:#111; color:#eee; margin:0; padding:20px; }
-    .tab-btn{ padding:10px; margin:5px; background:#333; border:none; color:#eee; cursor:pointer; border-radius:6px; }
-    .tab-btn.active{ background:#555; }
-    .list{ list-style:none; padding:0; }
-    .list li{ background:#222; padding:10px; margin:8px 0; border-radius:8px; }
-    .actions button{ margin:5px; }
+    body{font-family:sans-serif;background:#111;color:#eee;margin:0;padding:0;}
+    header{background:#222;padding:10px;text-align:center;}
+    header h1{margin:0;font-size:20px;}
+    nav{display:flex;justify-content:center;background:#333;}
+    nav button{padding:10px 20px;border:none;background:#333;color:#eee;cursor:pointer;}
+    nav button.active{background:#555;}
+    section{display:none;padding:15px;}
+    section.active{display:block;}
+    ul.list{list-style:none;padding:0;margin:0;}
+    ul.list li{background:#222;margin-bottom:8px;padding:10px;border-radius:6px;}
+    .actions button{margin-right:5px;}
+    input.rename{padding:4px;border-radius:4px;border:1px solid #555;background:#222;color:#fff;}
   </style>
 </head>
 <body>
-  <h2>⚙️ Panel de Administración</h2>
-  <div>
-    <button class="tab-btn" data-tab="privados">Privados (moderación)</button>
-    <button class="tab-btn" data-tab="todos">Todos los mensajes</button>
-    <button class="tab-btn" data-tab="usuarios">Usuarios</button>
-    <button class="tab-btn" data-tab="posts">Posts</button>
-  </div>
+  <header>
+    <h1>⚙️ Panel de Administración</h1>
+  </header>
 
-  <!-- Contenedores -->
-  <div id="privados" class="tab" style="display:none;">
-    <h3>Privados con groserías</h3>
-    <ul id="privadosList" class="list"></ul>
-  </div>
+  <nav>
+    <button data-tab="privados" class="active">Privados (groserías)</button>
+    <button data-tab="todos">Todos los mensajes</button>
+    <button data-tab="usuarios">Usuarios</button>
+    <button data-tab="posts">Posts</button>
+    <button data-tab="ajustes">Ajustes</button>
+  </nav>
 
-  <div id="todos" class="tab" style="display:none;">
-    <h3>Todos los privados</h3>
-    <ul id="allMessagesList" class="list"></ul>
-  </div>
+  <main>
+    <section id="privados" class="active">
+      <h2>Mensajes con groserías</h2>
+      <ul id="badPrivados" class="list"></ul>
+    </section>
 
-  <div id="usuarios" class="tab" style="display:none;">
-    <h3>Usuarios</h3>
-    <ul id="usuariosList" class="list"></ul>
-  </div>
+    <section id="todos">
+      <h2>Todos los privados</h2>
+      <ul id="allPrivados" class="list"></ul>
+    </section>
 
-  <div id="posts" class="tab" style="display:none;">
-    <h3>Posts</h3>
-    <ul id="postsList" class="list"></ul>
-  </div>
+    <section id="usuarios">
+      <h2>Usuarios registrados</h2>
+      <ul id="usersList" class="list"></ul>
+    </section>
 
-  <script>
-    // 🔹 Tu configuración Firebase
+    <section id="posts">
+      <h2>Posts</h2>
+      <ul id="postsList" class="list"></ul>
+    </section>
+
+    <section id="ajustes">
+      <h2>Ajustes</h2>
+      <p>Sección para futuras configuraciones del sistema 🚀</p>
+    </section>
+  </main>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-app.js";
+    import { getFirestore, collection, query, orderBy, limit, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
     const firebaseConfig = {
       apiKey: "TU_API_KEY",
       authDomain: "TU_DOMINIO.firebaseapp.com",
@@ -56,35 +71,108 @@
       messagingSenderId: "TU_ID",
       appId: "TU_APP_ID"
     };
-    const app = firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const db = firebase.firestore();
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
 
-    // 🔹 Protección: solo admins pueden entrar
-    auth.onAuthStateChanged(async (user)=>{
-      if(!user){
-        alert("No estás autenticado");
-        window.location.href = "index.html";
-      } else {
-        const uDoc = await db.collection("usuarios").doc(user.uid).get();
-        if(!uDoc.exists || uDoc.data().rol !== "admin"){
-          alert("Acceso denegado");
-          window.location.href = "index.html";
-        }
-      }
-    });
-
-    // 🔹 Tabs (navegación interna)
-    document.querySelectorAll(".tab-btn").forEach(btn=>{
+    // 🔹 Navegación tabs
+    const navBtns = document.querySelectorAll("nav button");
+    const sections = document.querySelectorAll("main section");
+    navBtns.forEach(btn=>{
       btn.addEventListener("click", ()=>{
-        document.querySelectorAll(".tab").forEach(t=>t.style.display="none");
-        document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
-        document.getElementById(btn.dataset.tab).style.display="block";
+        navBtns.forEach(b=>b.classList.remove("active"));
+        sections.forEach(s=>s.classList.remove("active"));
         btn.classList.add("active");
+        document.getElementById(btn.dataset.tab).classList.add("active");
       });
     });
 
-    // 🔹 Aquí luego añades loadPrivados(), loadAllMessages(), loadUsuarios(), loadPosts()
+    // 🚨 Palabras prohibidas
+    const malas = ["tonto","mierda","puta","imbecil","cabrón","pendejo"];
+
+    function contieneMala(txt){
+      return malas.some(p => txt?.toLowerCase().includes(p));
+    }
+
+    // 📌 Privados con groserías
+    const q1 = query(collection(db,"privateChat"), orderBy("timestamp","desc"), limit(200));
+    onSnapshot(q1, snap=>{
+      const ul = document.getElementById("badPrivados");
+      ul.innerHTML="";
+      snap.docs.forEach(d=>{
+        const m = d.data();
+        if(contieneMala(m.content||m.text||"")){
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><strong>${m.uid}</strong></div>
+            <div>${m.content||m.text}</div>
+            <div class="actions"><button class="del">🗑️ Eliminar</button></div>
+          `;
+          li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"privateChat",d.id));
+          ul.appendChild(li);
+        }
+      });
+    });
+
+    // 📌 Todos los privados
+    const q2 = query(collection(db,"privateChat"), orderBy("timestamp","desc"), limit(300));
+    onSnapshot(q2, snap=>{
+      const ul = document.getElementById("allPrivados");
+      ul.innerHTML="";
+      snap.docs.forEach(d=>{
+        const m = d.data();
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div><strong>${m.uid}</strong></div>
+          <div>${m.content||m.text}</div>
+          <div class="actions"><button class="del">🗑️ Eliminar</button></div>
+        `;
+        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"privateChat",d.id));
+        ul.appendChild(li);
+      });
+    });
+
+    // 📌 Usuarios con renombrar
+    onSnapshot(collection(db,"usuarios"), snap=>{
+      const ul = document.getElementById("usersList");
+      ul.innerHTML="";
+      snap.docs.forEach(d=>{
+        const u = d.data();
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div><strong>${u.nombre||"(sin nombre)"}</strong> (${d.id})</div>
+          <input class="rename" type="text" placeholder="Nuevo nombre"/>
+          <div class="actions">
+            <button class="save">💾 Renombrar</button>
+            <button class="del">🗑️ Eliminar</button>
+          </div>
+        `;
+        li.querySelector(".save").onclick=async()=>{
+          const nuevo = li.querySelector(".rename").value.trim();
+          if(nuevo){
+            await updateDoc(doc(db,"usuarios",d.id), { nombre:nuevo });
+          }
+        };
+        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"usuarios",d.id));
+        ul.appendChild(li);
+      });
+    });
+
+    // 📌 Posts
+    onSnapshot(collection(db,"posts"), snap=>{
+      const ul = document.getElementById("postsList");
+      ul.innerHTML="";
+      snap.docs.forEach(d=>{
+        const p = d.data();
+        const li = document.createElement("li");
+        li.innerHTML = `
+          <div><strong>${p.uid}</strong></div>
+          <div>${p.content||""}</div>
+          <div class="actions"><button class="del">🗑️ Eliminar</button></div>
+        `;
+        li.querySelector(".del").onclick=()=>deleteDoc(doc(db,"posts",d.id));
+        ul.appendChild(li);
+      });
+    });
   </script>
 </body>
 </html>
