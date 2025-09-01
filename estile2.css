@@ -1,0 +1,26 @@
+<style>  
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; display: flex; min-height: 100vh; }  
+    header { background: linear-gradient(90deg, #222, #444); padding: 15px 20px; font-size: 20px; font-weight: bold; color: #fff; display: flex; justify-content: space-between; align-items: center; }  
+    nav { background: #222; display: flex; justify-content: center; gap: 20px; padding: 10px; }  
+    nav a { color: #ccc; text-decoration: none; font-weight: bold; position: relative; padding: 6px 12px; border-radius: 6px; }  
+    nav a:hover { background: #333; color: #fff; }  
+    #chatNotif { display: none; background: red; color: white; font-size: 12px; padding: 2px 6px; border-radius: 50%; position: absolute; top: -6px; right: -8px; }  
+    main { flex: 1; padding: 20px; }  
+    aside { width: 240px; background: #1c1c1c; padding: 15px; border-left: 2px solid #333; }  
+    .post-box { background: #222; padding: 15px; border-radius: 8px; margin-bottom: 20px; }  
+    textarea, input[type="file"] { width: 100%; padding: 10px; border-radius: 8px; border: none; outline: none; resize: none; background: #333; color: #eee; margin-bottom: 10px; }  
+    button { margin-top: 10px; padding: 10px 15px; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; }  
+    button:hover { background: #09c; }  
+    .post { background: #1a1a1a; margin-bottom: 15px; padding: 15px; border-radius: 8px; box-shadow: 0px 0px 5px rgba(255,255,255,0.1); }  
+    .post strong { color: #0af; }  
+    .post small { display: block; color: #888; margin-top: 5px; }  
+    .post img { max-width: 100%; border-radius: 6px; margin-top: 10px; }  
+    .reactions button { margin-right: 5px; font-size: 14px; background: #333; }  
+    #profile { position: relative; cursor: pointer; background: #222; padding: 8px 12px; border-radius: 6px; }  
+    #profileMenu { display: none; position: absolute; right: 0; top: 40px; background: #222; border: 1px solid #333; border-radius: 6px; padding: 10px; min-width: 180px; z-index: 9999; }  
+    #profileMenu a, #profileMenu button { display: block; padding: 6px; color: #ccc; text-decoration: none; background:none; border:none; width:100%; text-align:left; cursor:pointer; }  
+    #profileMenu a:hover, #profileMenu button:hover { background:#333; color:#fff; }  
+    .light { background: #f4f4f4; color: #111; }  
+    .light nav, .light header, .light aside { background: #ddd; color: #111; }  
+    .light .post { background: #fff; color: #000; }  
+  </style>  
