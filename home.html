@@ -138,12 +138,13 @@
       if (fileInput.files.length > 0) {
         const file = fileInput.files[0];
         const fileName = Date.now() + "_" + file.name;
-        const { error } = await supabase.storage.from("posts").upload(fileName, file);
+        // Nota: el bucket real en Supabase se llama "Chat" (con mayúscula)
+        const { error } = await supabase.storage.from("Chat").upload(fileName, file);
         if (error) {
           console.error("Error al subir archivo:", error.message);
           alert("No se pudo subir la imagen: " + error.message);
         } else {
-          const { data: publicData } = supabase.storage.from("posts").getPublicUrl(fileName);
+          const { data: publicData } = supabase.storage.from("Chat").getPublicUrl(fileName);
           imageUrl = publicData.publicUrl;
         }
       }
