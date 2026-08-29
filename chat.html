@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samir Social — Chat privado</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: #111; color: #eee; margin: 0; padding: 0; }
+    header { background: linear-gradient(90deg, #222, #444); padding: 15px; text-align: center; font-size: 22px; font-weight: bold; color: #fff; }
+    nav { margin-top: 10px; }
+    nav a, nav button { color: #0af; margin: 0 10px; text-decoration: none; background: none; border: none; font-size: 15px; cursor: pointer; }
+    #friendList { padding: 20px; max-width: 480px; margin: 0 auto; }
+    #friendList button.friend { display: block; width: 100%; padding: 10px; margin: 8px 0; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; text-align: left; }
+    #friendList button.friend:hover { background: #09c; }
+    .empty { color: #777; font-style: italic; }
+    .unread { font-weight: bold; color: #ffdada; margin-left: 8px; background: #e33; padding: 1px 7px; border-radius: 10px; font-size: 12px; }
+    #chatWindow { padding: 20px; max-width: 480px; margin: 0 auto; }
+    #backBtn { background: none; border: none; color: #0af; cursor: pointer; margin-bottom: 10px; font-size: 14px; }
+    #messages { background: #1a1a1a; padding: 15px; height: 400px; overflow-y: auto; border-radius: 8px; margin-bottom: 10px; display: flex; flex-direction: column; }
+    .msg { padding: 8px 12px; margin: 6px 0; border-radius: 12px; max-width: 70%; word-wrap: break-word; }
+    .mine { background: #0af; color: #fff; margin-left: auto; }
+    .theirs { background: #333; color: #eee; margin-right: auto; }
+    .chatbox { display: flex; gap: 10px; }
+    .chatbox input { flex: 1; padding: 10px; border-radius: 8px; border: none; outline: none; background: #222; color: #fff; }
+    .chatbox button { padding: 10px 15px; border: none; border-radius: 6px; background: #0af; color: #fff; cursor: pointer; }
+    .chatbox button:hover { background: #09c; }
+  </style>
+</head>
+<body>
+  <header>
+    Chat privado
+    <nav>
+      <a href="home.html">Inicio</a>
+      <button id="logoutBtn">Cerrar sesión</button>
+    </nav>
+  </header>
+
+  <section id="friendList"><p class="empty">Cargando contactos...</p></section>
+
+  <section id="chatWindow" style="display:none;">
+    <button id="backBtn">← Volver a contactos</button>
+    <h3 id="chatWith"></h3>
+    <div id="messages"></div>
+    <footer class="chatbox">
+      <input type="text" id="messageInput" placeholder="Escribe un mensaje..." autocomplete="off">
+      <button id="sendBtn">Enviar</button>
+    </footer>
+  </section>
+
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import {
+      collection, addDoc, query, orderBy, onSnapshot, getDocs,
+      updateDoc, doc, where, arrayUnion, serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    let currentUser;
+    let currentFriend;
+    let chatId;
+    let unsubMessages = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.href = "index.html"; return; }
+      currentUser = user;
+      loadFriends();
+    });
+
+    async function loadFriends() {
+      const querySnap = await getDocs(collection(db, "users"));
+      const listDiv = document.getElementById("friendList");
+      listDiv.innerHTML = "<h3>Contactos</h3>";
+
+      const otros = querySnap.docs.map(d => d.data()).filter(u => u.uid !== currentUser.uid);
+      if (otros.length === 0) {
+        listDiv.innerHTML += "<p class='empty'>Todavía no hay otros usuarios registrados.</p>";
+        return;
+      }
+
+      otros.forEach((data) => {
+        const btn = document.createElement("button");
+        btn.className = "friend";
+        btn.textContent = data.nombre || data.email;
+
+        // Notificación de mensajes no leídos con este contacto
+        const chatKey = [currentUser.uid, data.uid].sort().join("_");
+        const q = query(
+          collection(db, "privateChat"),
+          where("chatId", "==", chatKey)
+        );
+        onSnapshot(q, (snap) => {
+          const unreadCount = snap.docs.filter(d => {
+            const m = d.data();
+            return m.to === currentUser.uid && (!m.readBy || !m.readBy.includes(currentUser.uid));
+          }).length;
+          btn.innerHTML = unreadCount > 0
+            ? `${data.nombre || data.email} <span class="unread">${unreadCount}</span>`
+            : (data.nombre || data.email);
+        });
+
+        btn.onclick = () => openChat(data);
+        listDiv.appendChild(btn);
+      });
+    }
+
+    function openChat(friend) {
+      currentFriend = friend;
+      chatId = [currentUser.uid, friend.uid].sort().join("_");
+
+      document.getElementById("chatWith").textContent = "Chateando con " + (friend.nombre || friend.email);
+      document.getElementById("friendList").style.display = "none";
+      document.getElementById("chatWindow").style.display = "block";
+
+      loadMessages();
+    }
+
+    document.getElementById("backBtn").addEventListener("click", () => {
+      if (unsubMessages) unsubMessages();
+      document.getElementById("chatWindow").style.display = "none";
+      document.getElementById("friendList").style.display = "block";
+    });
+
+    async function sendMessage() {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (text === "" || !chatId) return;
+      input.value = "";
+      await addDoc(collection(db, "privateChat"), {
+        chatId,
+        uid: currentUser.uid,
+        to: currentFriend.uid,
+        content: text,
+        readBy: [],
+        timestamp: serverTimestamp()
+      });
+    }
+    document.getElementById("sendBtn").addEventListener("click", sendMessage);
+    document.getElementById("messageInput").addEventListener("keydown", (e) => {
+      if (e.key === "Enter") sendMessage();
+    });
+
+    function loadMessages() {
+      if (unsubMessages) unsubMessages();
+      const q = query(
+        collection(db, "privateChat"),
+        where("chatId", "==", chatId),
+        orderBy("timestamp")
+      );
+      unsubMessages = onSnapshot(q, (snapshot) => {
+        const messagesDiv = document.getElementById("messages");
+        messagesDiv.innerHTML = "";
+        snapshot.forEach(docSnap => {
+          const msg = docSnap.data();
+          const div = document.createElement("div");
+          div.classList.add("msg", msg.uid === currentUser.uid ? "mine" : "theirs");
+          div.textContent = msg.content;
+          messagesDiv.appendChild(div);
+        });
+        messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        markAsRead(snapshot);
+      });
+    }
+
+    async function markAsRead(snapshot) {
+      for (const docSnap of snapshot.docs) {
+        const msg = docSnap.data();
+        if (msg.to === currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))) {
+          await updateDoc(doc(db, "privateChat", docSnap.id), { readBy: arrayUnion(currentUser.uid) });
+        }
+      }
+    }
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+      await signOut(auth);
+      window.location.href = "index.html";
+    });
+  </script>
+</body>
+</html>

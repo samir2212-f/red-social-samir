@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Samir Social — Iniciar sesión</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", "Poppins", sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #1e1e2f, #2a2a40, #0f0f17);
+      color: #fff;
+    }
+
+    .login-container {
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      padding: 40px;
+      border-radius: 15px;
+      text-align: center;
+      width: 320px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+      animation: fadeIn 0.6s ease-in-out;
+    }
+
+    .login-container h1 {
+      margin: 0 0 4px;
+      font-size: 26px;
+      color: #00c3ff;
+    }
+
+    .login-container p.subtitle {
+      margin: 0 0 25px;
+      font-size: 13px;
+      color: #9aa0b4;
+    }
+
+    .login-container input {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      border: none;
+      border-radius: 8px;
+      outline: none;
+      font-size: 15px;
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      transition: 0.3s;
+    }
+
+    .login-container input::placeholder { color: #bbb; }
+    .login-container input:focus { background: rgba(255, 255, 255, 0.25); }
+
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+    }
+
+    .login-container button:first-of-type {
+      background: linear-gradient(45deg, #00c3ff, #0072ff);
+      color: #fff;
+    }
+    .login-container button:first-of-type:hover {
+      background: linear-gradient(45deg, #0099cc, #0059cc);
+    }
+    .login-container button:last-of-type {
+      background: linear-gradient(45deg, #ff6ec4, #7873f5);
+      color: #fff;
+    }
+    .login-container button:last-of-type:hover {
+      background: linear-gradient(45deg, #d959a9, #5e55d9);
+    }
+    .login-container button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    #authMsg {
+      min-height: 18px;
+      margin-top: 12px;
+      font-size: 13px;
+      color: #ff8080;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: scale(0.96); }
+      to { opacity: 1; transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <h1>Samir Social</h1>
+    <p class="subtitle">Inicia sesión o crea tu cuenta</p>
+    <input type="email" id="email" placeholder="Correo" autocomplete="email">
+    <input type="password" id="password" placeholder="Contraseña" autocomplete="current-password">
+    <button id="loginBtn">Iniciar sesión</button>
+    <button id="registerBtn">Registrarse</button>
+    <p id="authMsg"></p>
+  </div>
+
+  <script type="module">
+    import { auth, db } from "./firebase-config.js";
+    import { signInWithEmailAndPassword, createUserWithEmailAndPassword }
+      from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import { setDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    const emailInput = document.getElementById("email");
+    const passwordInput = document.getElementById("password");
+    const authMsg = document.getElementById("authMsg");
+    const loginBtn = document.getElementById("loginBtn");
+    const registerBtn = document.getElementById("registerBtn");
+
+    function mensajeError(e) {
+      // Traduce los errores más comunes de Firebase Auth a español
+      const map = {
+        "auth/invalid-email": "El correo no es válido.",
+        "auth/missing-password": "Escribe una contraseña.",
+        "auth/user-not-found": "No existe una cuenta con ese correo.",
+        "auth/wrong-password": "Contraseña incorrecta.",
+        "auth/invalid-credential": "Correo o contraseña incorrectos.",
+        "auth/email-already-in-use": "Ya existe una cuenta con ese correo.",
+        "auth/weak-password": "La contraseña debe tener al menos 6 caracteres."
+      };
+      return map[e.code] || e.message;
+    }
+
+    function setLoading(loading) {
+      loginBtn.disabled = loading;
+      registerBtn.disabled = loading;
+    }
+
+    async function login() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) { authMsg.textContent = "Completa correo y contraseña."; return; }
+      setLoading(true);
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        window.location.href = "home.html";
+      } catch (e) {
+        authMsg.textContent = mensajeError(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    async function register() {
+      const email = emailInput.value.trim();
+      const password = passwordInput.value;
+      if (!email || !password) { authMsg.textContent = "Completa correo y contraseña."; return; }
+      setLoading(true);
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          uid: cred.user.uid,
+          email: email,
+          nombre: email.split("@")[0]
+        });
+        window.location.href = "home.html";
+      } catch (e) {
+        authMsg.textContent = mensajeError(e);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loginBtn.addEventListener("click", login);
+    registerBtn.addEventListener("click", register);
+    passwordInput.addEventListener("keydown", (e) => { if (e.key === "Enter") login(); });
+  </script>
+</body>
+</html>
