@@ -272,6 +272,18 @@ body.page-home {
   font-size: 12px;
   font-weight: 700;
   color: #1c0e08;
+  /* El avatar y el nombre son elementos "en flujo normal" (sin position),
+     así que un elemento posicionado (el menú, con z-index:999) siempre
+     se dibuja por encima de ellos, sin importar qué tan alto sea su
+     z-index — en CSS, z-index solo compara entre elementos posicionados.
+     Al darles position:relative + un z-index mayor que el del menú, se
+     garantiza que el avatar y el nombre queden siempre visibles arriba. */
+  position: relative;
+  z-index: 1000;
+}
+#profileName {
+  position: relative;
+  z-index: 1000;
 }
 #profileMenu {
   display: none;
