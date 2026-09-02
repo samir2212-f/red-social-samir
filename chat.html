@@ -48,7 +48,24 @@
   <script>
     const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // OJO: antes esto era "const supabase = window.supabase.createClient(...)"
+    // Si el script del CDN (unpkg) no llegaba a cargar a tiempo (bloqueado
+    // por un adblocker, sin internet, CDN caído, etc.), "window.supabase"
+    // era undefined y esta línea lanzaba un error. Como era la única
+    // instrucción del <script>, el error dejaba la variable "supabase" a
+    // medio inicializar (TDZ) y cualquier código posterior que la usara
+    // rompía de forma más confusa todavía. Ahora se envuelve en try/catch
+    // y, si falla, "supabase" queda en null en vez de romperse.
+    let supabase = null;
+    try {
+      if (window.supabase && typeof window.supabase.createClient === "function") {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      } else {
+        console.error("Supabase SDK no se cargó (window.supabase es undefined). Revisa bloqueadores de anuncios/extensiones o la conexión a unpkg.com.");
+      }
+    } catch (e) {
+      console.error("Error creando el cliente de Supabase:", e);
+    }
   </script>
 
   <script type="module">
