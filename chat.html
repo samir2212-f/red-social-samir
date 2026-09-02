@@ -184,9 +184,37 @@
           messagesDiv.innerHTML = "<p class='empty'>Todavía no hay mensajes. Escribe el primero.</p>";
         } else {
           docsOrdenados.forEach(({ data: msg }) => {
+            const esMio = msg.uid === currentUser.uid;
+
             const div = document.createElement("div");
-            div.classList.add("msg", msg.uid === currentUser.uid ? "mine" : "theirs");
-            div.textContent = msg.content;
+            div.classList.add("msg", esMio ? "mine" : "theirs");
+
+            const textoDiv = document.createElement("div");
+            textoDiv.className = "msg-text";
+            textoDiv.textContent = msg.content;
+            div.appendChild(textoDiv);
+
+            // Fila de metadatos: hora del mensaje y, si es mío, el estado
+            // de lectura (como en WhatsApp: un check = enviado, dos check
+            // azules = leído por el otro usuario).
+            const metaDiv = document.createElement("div");
+            metaDiv.className = "msg-meta";
+
+            const horaSpan = document.createElement("span");
+            horaSpan.className = "msg-time";
+            horaSpan.textContent = formatearHora(msg.timestamp);
+            metaDiv.appendChild(horaSpan);
+
+            if (esMio) {
+              const leido = !!(msg.readBy && msg.readBy.includes(currentFriend.uid));
+              const ticksSpan = document.createElement("span");
+              ticksSpan.className = "msg-ticks" + (leido ? " read" : "");
+              ticksSpan.textContent = "✓✓";
+              ticksSpan.title = leido ? "Leído" : "Enviado";
+              metaDiv.appendChild(ticksSpan);
+            }
+
+            div.appendChild(metaDiv);
             messagesDiv.appendChild(div);
           });
         }
@@ -198,6 +226,15 @@
         document.getElementById("chatErrorBox").innerHTML =
           `<div class="chat-error">No se pudieron cargar los mensajes: ${err.message}</div>`;
       });
+    }
+
+    // Convierte el timestamp de Firestore a una hora legible tipo "14:32".
+    // Mientras el servidor todavía no confirma serverTimestamp() (justo al
+    // enviar), msg.timestamp puede venir null por unos instantes: en ese
+    // caso mostramos la hora actual del navegador para que no quede vacío.
+    function formatearHora(timestamp) {
+      const fecha = timestamp ? timestamp.toDate() : new Date();
+      return fecha.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     }
 
     async function markAsRead(docsOrdenados) {
