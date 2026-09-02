@@ -587,6 +587,26 @@ button.friend:hover { background: var(--surface-3); border-color: var(--border);
   border-bottom-left-radius: 4px;
 }
 
+.msg-meta {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 1;
+  opacity: 0.75;
+}
+.theirs .msg-meta { justify-content: flex-start; }
+
+.msg-time { white-space: nowrap; }
+
+.msg-ticks {
+  color: rgba(28, 14, 8, 0.55);
+  letter-spacing: -1px;
+}
+.msg-ticks.read { color: #4fc3f7; }
+
 .chat-error {
   background: var(--danger-soft);
   color: var(--danger);
