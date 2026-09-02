@@ -24,6 +24,9 @@
       <h3 id="chatWith"></h3>
       <div id="chatErrorBox"></div>
       <div id="messages"></div>
+      <div id="typingIndicator" class="typing-indicator" style="display:none;">
+        <span></span><span></span><span></span>
+      </div>
       <footer class="chatbox">
         <input type="text" id="messageInput" class="field" placeholder="Escribe un mensaje..." autocomplete="off">
         <button id="sendBtn">Enviar</button>
@@ -38,13 +41,16 @@
     import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
     import {
       collection, addDoc, query, onSnapshot, getDocs,
-      updateDoc, doc, where, arrayUnion, serverTimestamp
+      updateDoc, doc, where, arrayUnion, serverTimestamp,
+      setDoc
     } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
     let currentUser;
     let currentFriend;
     let chatId;
     let unsubMessages = null;
+    let unsubTyping = null;
+    let typingTimeout = null;
 
     onAuthStateChanged(auth, (user) => {
       if (!user) { window.location.href = "index.html"; return; }
@@ -110,10 +116,13 @@
       document.getElementById("chatErrorBox").innerHTML = "";
 
       loadMessages();
+      escucharEscribiendo();
     }
 
     document.getElementById("backBtn").addEventListener("click", () => {
       if (unsubMessages) unsubMessages();
+      if (unsubTyping) unsubTyping();
+      marcarEscribiendo(false);
       document.getElementById("chatWindow").style.display = "none";
       document.getElementById("friendList").style.display = "block";
     });
@@ -123,6 +132,7 @@
       const text = input.value.trim();
       if (text === "" || !chatId) return;
       input.value = "";
+      marcarEscribiendo(false); // al enviar, dejamos de mostrar "escribiendo..."
       try {
         await addDoc(collection(db, "privateChat"), {
           chatId,
@@ -146,6 +156,49 @@
     document.getElementById("messageInput").addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendMessage();
     });
+
+    // ------------------------------------------------------------------
+    // Indicador de "está escribiendo..." (las bolitas tipo WhatsApp)
+    // ------------------------------------------------------------------
+    // Se usa una colección nueva "typingStatus" con UN documento por
+    // conversación (mismo id que chatId). Dentro, cada usuario tiene su
+    // propio campo con su UID, en true si está escribiendo ahora mismo.
+    // Con setDoc(..., {merge:true}) cada quien solo toca su propio campo,
+    // sin pisar el del otro usuario.
+
+    document.getElementById("messageInput").addEventListener("input", () => {
+      if (!chatId) return;
+      marcarEscribiendo(true);
+      // Si el usuario deja de teclear 2 segundos, se apaga solo,
+      // por si cierra la pestaña o se queda pensando sin escribir.
+      clearTimeout(typingTimeout);
+      typingTimeout = setTimeout(() => marcarEscribiendo(false), 2000);
+    });
+
+    async function marcarEscribiendo(estaEscribiendo) {
+      if (!chatId || !currentUser) return;
+      try {
+        await setDoc(
+          doc(db, "typingStatus", chatId),
+          { [currentUser.uid]: estaEscribiendo },
+          { merge: true }
+        );
+      } catch (err) {
+        console.error("Error actualizando estado de escritura:", err);
+      }
+    }
+
+    function escucharEscribiendo() {
+      if (unsubTyping) unsubTyping();
+      const indicador = document.getElementById("typingIndicator");
+      unsubTyping = onSnapshot(doc(db, "typingStatus", chatId), (snap) => {
+        const data = snap.data();
+        const amigoEscribiendo = !!(data && data[currentFriend.uid]);
+        indicador.style.display = amigoEscribiendo ? "flex" : "none";
+      }, (err) => {
+        console.error("Error escuchando estado de escritura:", err);
+      });
+    }
 
     // BUG ARREGLADO:
     // Antes esta consulta combinaba where("chatId","==",chatId) con
@@ -250,6 +303,8 @@
     }
 
     document.getElementById("logoutBtn").addEventListener("click", async () => {
+      if (unsubTyping) unsubTyping();
+      await marcarEscribiendo(false);
       await signOut(auth);
       window.location.href = "index.html";
     });
