@@ -29,12 +29,27 @@
       </div>
       <footer class="chatbox">
         <input type="text" id="messageInput" class="field" placeholder="Escribe un mensaje..." autocomplete="off">
+        <button id="micBtn" type="button" title="Grabar audio">🎤</button>
         <button id="sendBtn">Enviar</button>
-
       </footer>
+      <div id="recordingBar" class="recording-bar" style="display:none;">
+        <span class="recording-dot"></span>
+        <span id="recordingTime">0:00</span>
+        <span class="recording-label">Grabando audio...</span>
+        <button id="cancelRecordBtn" type="button">Cancelar</button>
+        <button id="stopRecordBtn" type="button">Enviar audio</button>
+      </div>
       
     
   </div>
+
+  <!-- Supabase (almacenamiento de los audios de voz, mismo bucket "Chat" que usa home.html) -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <script>
+    const SUPABASE_URL = "https://klziukovalzzcinifvaw.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  </script>
 
   <script type="module">
     import { auth, db } from "./firebase-config.js";
@@ -177,6 +192,111 @@
     });
 
     // ------------------------------------------------------------------
+    // Notas de audio
+    // ------------------------------------------------------------------
+    // Se graba con MediaRecorder (API nativa del navegador) y el archivo
+    // resultante (.webm) se sube a Supabase Storage, bucket "Chat", en
+    // una carpeta "audio/" aparte de las imágenes del chat general.
+    // Igual que con las imágenes en home.html, se guarda solo la URL
+    // pública en Firestore, no el archivo en sí.
+    let mediaRecorder = null;
+    let audioChunks = [];
+    let recordingInterval = null;
+    let recordingSeconds = 0;
+
+    const micBtn = document.getElementById("micBtn");
+    const recordingBar = document.getElementById("recordingBar");
+    const recordingTimeEl = document.getElementById("recordingTime");
+
+    micBtn.addEventListener("click", async () => {
+      if (!chatId) return;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.addEventListener("dataavailable", (e) => {
+          if (e.data.size > 0) audioChunks.push(e.data);
+        });
+
+        mediaRecorder.start();
+        recordingSeconds = 0;
+        recordingTimeEl.textContent = "0:00";
+        recordingBar.style.display = "flex";
+        document.querySelector(".chatbox").style.display = "none";
+
+        recordingInterval = setInterval(() => {
+          recordingSeconds++;
+          const m = Math.floor(recordingSeconds / 60);
+          const s = String(recordingSeconds % 60).padStart(2, "0");
+          recordingTimeEl.textContent = `${m}:${s}`;
+        }, 1000);
+      } catch (err) {
+        console.error("Error accediendo al micrófono:", err);
+        document.getElementById("chatErrorBox").innerHTML =
+          `<div class="chat-error">No se pudo acceder al micrófono: ${err.message}</div>`;
+      }
+    });
+
+    function detenerGrabacion() {
+      clearInterval(recordingInterval);
+      recordingBar.style.display = "none";
+      document.querySelector(".chatbox").style.display = "flex";
+      if (mediaRecorder && mediaRecorder.state !== "inactive") {
+        mediaRecorder.stream.getTracks().forEach(track => track.stop());
+      }
+    }
+
+    document.getElementById("cancelRecordBtn").addEventListener("click", () => {
+      if (mediaRecorder) {
+        mediaRecorder.onstop = null; // no enviar nada al cancelar
+        if (mediaRecorder.state !== "inactive") mediaRecorder.stop();
+      }
+      detenerGrabacion();
+    });
+
+    document.getElementById("stopRecordBtn").addEventListener("click", () => {
+      if (!mediaRecorder || mediaRecorder.state === "inactive") return;
+      mediaRecorder.onstop = async () => {
+        detenerGrabacion();
+        await subirYEnviarAudio();
+      };
+      mediaRecorder.stop();
+    });
+
+    async function subirYEnviarAudio() {
+      if (audioChunks.length === 0 || !chatId) return;
+      const blob = new Blob(audioChunks, { type: "audio/webm" });
+      const fileName = `audio/${chatId}_${Date.now()}.webm`;
+
+      try {
+        const { error } = await supabase.storage.from("Chat").upload(fileName, blob);
+        if (error) {
+          document.getElementById("chatErrorBox").innerHTML =
+            `<div class="chat-error">No se pudo subir el audio: ${error.message}</div>`;
+          return;
+        }
+        const { data: publicData } = supabase.storage.from("Chat").getPublicUrl(fileName);
+
+        await addDoc(collection(db, "privateChat"), {
+          chatId,
+          uid: currentUser.uid,
+          to: currentFriend.uid,
+          participants: [currentUser.uid, currentFriend.uid],
+          type: "audio",
+          audioUrl: publicData.publicUrl,
+          content: "",
+          readBy: [],
+          timestamp: serverTimestamp()
+        });
+      } catch (err) {
+        console.error("Error enviando audio:", err);
+        document.getElementById("chatErrorBox").innerHTML =
+          `<div class="chat-error">No se pudo enviar el audio: ${err.message}</div>`;
+      }
+    }
+
+    // ------------------------------------------------------------------
     // Indicador de "está escribiendo..." (las bolitas tipo WhatsApp)
     // ------------------------------------------------------------------
     // Se usa una colección nueva "typingStatus" con UN documento por
@@ -261,10 +381,18 @@
             const div = document.createElement("div");
             div.classList.add("msg", esMio ? "mine" : "theirs");
 
-            const textoDiv = document.createElement("div");
-            textoDiv.className = "msg-text";
-            textoDiv.textContent = msg.content;
-            div.appendChild(textoDiv);
+            if (msg.type === "audio" && msg.audioUrl) {
+              const audioEl = document.createElement("audio");
+              audioEl.className = "msg-audio";
+              audioEl.controls = true;
+              audioEl.src = msg.audioUrl;
+              div.appendChild(audioEl);
+            } else {
+              const textoDiv = document.createElement("div");
+              textoDiv.className = "msg-text";
+              textoDiv.textContent = msg.content;
+              div.appendChild(textoDiv);
+            }
 
             // Fila de metadatos: hora del mensaje y, si es mío, el estado
             // de lectura (como en WhatsApp: un check = enviado, dos check
