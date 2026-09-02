@@ -42,7 +42,7 @@
     import {
       collection, addDoc, query, onSnapshot, getDocs,
       updateDoc, doc, where, arrayUnion, serverTimestamp,
-      setDoc
+      setDoc, deleteDoc
     } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
 
     let currentUser;
@@ -55,8 +55,27 @@
     onAuthStateChanged(auth, (user) => {
       if (!user) { window.location.href = "index.html"; return; }
       currentUser = user;
+      marcarEnLinea();
       loadFriends();
     });
+
+    // Vuelve a marcar al usuario como "en línea" al entrar a esta página.
+    // home.html hace lo mismo al cargar, pero borra ese registro con
+    // beforeunload al SALIR de home.html (incluso al navegar a otra
+    // página del sitio, no solo al cerrar la pestaña). Por eso, al entrar
+    // al chat privado, había que volver a crearlo aquí; si no, el usuario
+    // quedaba marcado como desconectado mientras chateaba.
+    async function marcarEnLinea() {
+      try {
+        await setDoc(doc(db, "onlineUsers", currentUser.uid), {
+          email: currentUser.email,
+          lastActive: serverTimestamp(),
+          online: true
+        }, { merge: true });
+      } catch (err) {
+        console.error("Error marcando usuario en línea:", err);
+      }
+    }
 
     async function loadFriends() {
       const querySnap = await getDocs(collection(db, "users"));
@@ -305,6 +324,7 @@
     document.getElementById("logoutBtn").addEventListener("click", async () => {
       if (unsubTyping) unsubTyping();
       await marcarEscribiendo(false);
+      try { if (currentUser) await deleteDoc(doc(db, "onlineUsers", currentUser.uid)); } catch (e) {}
       await signOut(auth);
       window.location.href = "index.html";
     });
