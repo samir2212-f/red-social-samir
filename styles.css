@@ -216,7 +216,14 @@ body.page-home {
   top: 0;
   left: 0;
   right: 0;
-  z-index: 30;
+  z-index: 9999;
+  /* "isolation: isolate" obliga a que TODO lo de adentro (topbar, menú
+     de perfil, etc.) se compare entre sí en su propio contexto de
+     apilamiento, y que ese bloque completo se pinte con el z-index de
+     arriba (9999) frente a cualquier otra cosa de la página — así no
+     importa si algún elemento del feed (o un script de terceros, como
+     el anuncio) intenta ponerse encima sin querer. */
+  isolation: isolate;
   display: flex;
   flex-direction: column;
 }
