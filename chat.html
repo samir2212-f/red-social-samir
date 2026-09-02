@@ -275,13 +275,15 @@
       const fileName = `audio/${chatId}_${Date.now()}.webm`;
 
       try {
-        const { error } = await supabase.storage.from("Chat").upload(fileName, blob);
+        const { error } = await supabase.storage.from("ChatPrivado").upload(fileName, blob, {
+          contentType: "audio/webm"
+        });
         if (error) {
           document.getElementById("chatErrorBox").innerHTML =
             `<div class="chat-error">No se pudo subir el audio: ${error.message}</div>`;
           return;
         }
-        const { data: publicData } = supabase.storage.from("Chat").getPublicUrl(fileName);
+        const { data: publicData } = supabase.storage.from("ChatPrivado").getPublicUrl(fileName);
 
         await addDoc(collection(db, "privateChat"), {
           chatId,
