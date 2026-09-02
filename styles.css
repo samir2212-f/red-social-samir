@@ -673,6 +673,56 @@ button.friend:hover { background: var(--surface-3); border-color: var(--border);
 }
 .chatbox button:hover { opacity: 0.92; }
 
+#micBtn {
+  background: var(--surface-3);
+  color: var(--ink);
+  padding: 0 16px;
+  font-size: 16px;
+}
+#micBtn:hover { opacity: 0.85; }
+
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+}
+.recording-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--danger);
+  animation: recording-pulse 1s infinite;
+  flex-shrink: 0;
+}
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+#recordingTime { font-variant-numeric: tabular-nums; color: var(--ink-dim); }
+.recording-label { color: var(--ink-dim); font-size: 13.5px; flex: 1; }
+.recording-bar button {
+  border: none;
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 13px;
+}
+#cancelRecordBtn { background: var(--surface-2); color: var(--ink-dim); }
+#cancelRecordBtn:hover { color: var(--ink); }
+#stopRecordBtn { background: var(--accent-grad); color: #1c0e08; }
+#stopRecordBtn:hover { opacity: 0.92; }
+
+.msg-audio {
+  height: 38px;
+  max-width: 240px;
+  display: block;
+}
+
 /* ============================================================
    REELS — feed.html (visor) y reels.html (subida)
    ============================================================ */
