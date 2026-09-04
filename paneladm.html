@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Samir Social — Panel de administración</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="styles.css">
+  <!-- Aviso de llamada entrante, visible en cualquier página del sitio -->
+  <script type="module" src="incoming-call.js"></script>
+</head>
+<body class="page-admin">
+  <div id="gate">Verificando acceso…</div>
+
+  <div id="panel" style="display:none; flex-direction:column; flex:1;">
+    <div class="admin-header">
+      <h1>Panel de administración</h1>
+      <a class="back-link" href="home.html">← Volver a inicio</a>
+    </div>
+
+    <div class="admin-body">
+      <nav class="admin-tabs">
+        <button data-tab="privados" class="active">Privados (moderación)</button>
+        <button data-tab="todos">Todos los privados</button>
+        <button data-tab="usuarios">Usuarios</button>
+        <button data-tab="posts">Posts</button>
+        <button data-tab="ajustes">Ajustes</button>
+      </nav>
+
+      <main class="admin-main">
+        <section id="privados" class="admin-section active">
+          <h2>Mensajes privados con lenguaje inapropiado</h2>
+          <ul id="badPrivados" class="list"></ul>
+        </section>
+
+        <section id="todos" class="admin-section">
+          <h2>Todos los mensajes privados</h2>
+          <ul id="allPrivados" class="list"></ul>
+        </section>
+
+        <section id="usuarios" class="admin-section">
+          <h2>Usuarios registrados</h2>
+          <ul id="usersList" class="list"></ul>
+        </section>
+
+        <section id="posts" class="admin-section">
+          <h2>Posts del feed</h2>
+          <ul id="postsList" class="list"></ul>
+        </section>
+
+        <section id="ajustes" class="admin-section">
+          <h2>Ajustes</h2>
+          <p class="empty">Sección reservada para futuras configuraciones del sistema.</p>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <script type="module">
+    import { auth, db, ADMINS } from "./firebase-config.js";
+    import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+    import { collection, query, orderBy, limit, onSnapshot, doc, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) { window.location.href = "index.html"; return; }
+      if (!ADMINS.includes(user.uid)) {
+        alert("No tienes permisos de administrador.");
+        window.location.href = "home.html";
+        return;
+      }
+      document.getElementById("gate").style.display = "none";
+      document.getElementById("panel").style.display = "flex";
+      initPanel();
+    });
+
+    function renderList(ul, docs, mapRow) {
+      ul.innerHTML = "";
+      if (docs.length === 0) {
+        ul.innerHTML = "<li class='empty'>No hay elementos.</li>";
+        return;
+      }
+      docs.forEach(mapRow);
+    }
+
+    function initPanel() {
+      const navBtns = document.querySelectorAll("nav.admin-tabs button");
+      const sections = document.querySelectorAll("main.admin-main section");
+      navBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          navBtns.forEach(b => b.classList.remove("active"));
+          sections.forEach(s => s.classList.remove("active"));
+          btn.classList.add("active");
+          document.getElementById(btn.dataset.tab).classList.add("active");
+        });
+      });
+
+      const malas = ["tonto", "mierda", "puta", "imbecil", "cabrón", "pendejo"];
+      const contieneMala = txt => malas.some(p => txt?.toLowerCase().includes(p));
+
+      const q1 = query(collection(db, "privateChat"), orderBy("timestamp", "desc"), limit(200));
+      onSnapshot(q1, snap => {
+        const ul = document.getElementById("badPrivados");
+        const docs = snap.docs.filter(d => contieneMala(d.data().content || d.data().text || ""));
+        renderList(ul, docs, d => {
+          const m = d.data();
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><strong>${m.uid}</strong></div>
+            <div>${m.content || m.text}</div>
+            <div class="actions-row"><button class="del">Eliminar</button></div>
+          `;
+          li.querySelector(".del").onclick = () => deleteDoc(doc(db, "privateChat", d.id));
+          ul.appendChild(li);
+        });
+      });
+
+      const q2 = query(collection(db, "privateChat"), orderBy("timestamp", "desc"), limit(300));
+      onSnapshot(q2, snap => {
+        const ul = document.getElementById("allPrivados");
+        renderList(ul, snap.docs, d => {
+          const m = d.data();
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><strong>${m.uid}</strong></div>
+            <div>${m.content || m.text}</div>
+            <div class="actions-row"><button class="del">Eliminar</button></div>
+          `;
+          li.querySelector(".del").onclick = () => deleteDoc(doc(db, "privateChat", d.id));
+          ul.appendChild(li);
+        });
+      });
+
+      onSnapshot(collection(db, "users"), snap => {
+        const ul = document.getElementById("usersList");
+        renderList(ul, snap.docs, d => {
+          const u = d.data();
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><strong>${u.nombre || "(sin nombre)"}</strong> (${d.id})</div>
+            <input class="rename" type="text" placeholder="Nuevo nombre"/>
+            <div class="actions-row">
+              <button class="save">Renombrar</button>
+              <button class="del">Eliminar</button>
+            </div>
+          `;
+          li.querySelector(".save").onclick = async () => {
+            const nuevo = li.querySelector(".rename").value.trim();
+            if (nuevo) await updateDoc(doc(db, "users", d.id), { nombre: nuevo });
+          };
+          li.querySelector(".del").onclick = () => deleteDoc(doc(db, "users", d.id));
+          ul.appendChild(li);
+        });
+      });
+
+      onSnapshot(collection(db, "chat"), snap => {
+        const ul = document.getElementById("postsList");
+        renderList(ul, snap.docs, d => {
+          const p = d.data();
+          const li = document.createElement("li");
+          li.innerHTML = `
+            <div><strong>${p.uid}</strong></div>
+            <div>${p.content || ""}</div>
+            <div class="actions-row"><button class="del">Eliminar</button></div>
+          `;
+          li.querySelector(".del").onclick = () => deleteDoc(doc(db, "chat", d.id));
+          ul.appendChild(li);
+        });
+      });
+    }
+  </script>
+</body>
+</html>
