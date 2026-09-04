@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Social — Inicio</title>
+  <link rel="stylesheet" href="styles.css">
+  <!-- Aviso de llamada entrante, visible en cualquier página del sitio -->
+  <script type="module" src="incoming-call.js"></script>
+</head>
+<body class="page-home">
+  <!-- Topbar y menú agrupados en un solo bloque fijo (position: fixed).
+       Antes iban por separado con "sticky" y había que calcular a mano
+       dónde empezaba uno y terminaba el otro, lo que provocaba que el
+       menú quedara tapado unos pixeles. Agrupados así, el navegador los
+       acomoda uno debajo del otro automáticamente y todo el bloque queda
+       flotando arriba, sin que el scroll de la página le afecte. -->
+  <div class="app-header" id="appHeader">
+    <header class="topbar">
+      <div class="brand"><span class="dot"></span>Social</div>
+      <div id="profile">
+        <span class="avatar" id="profileAvatar">?</span>
+        <span id="profileName">Cargando...</span>
+        <div id="profileMenu">
+          <button id="editNameBtn">✏️ Cambiar nombre</button>
+          <button id="btnAdmin" style="display:none;">🛡️ Panel admin</button>
+          <a href="#" id="logoutBtn">🚪 Cerrar sesión</a>
+        </div>
+      </div>
+    </header>
+
+    <nav class="tabs">
+      <a href="home.html">🏠 Inicio</a>
+      <a href="chat.html" id="chatLink">💌 Chat <span id="chatNotif">0</span></a>
+      <a href="reels.html">🎥 Subir reel</a>
+      <a href="feed.html">📺 Ver reels</a>
+      
+      <a href="#" id="toggleMode">🌙 Modo claro</a>
+    </nav>
+  </div>
+
+  <script>
+    // Como el bloque de arriba ahora es "fixed" (queda flotando y sale
+    // del flujo normal de la página), hay que dejarle un espacio vacío
+    // del mismo alto arriba del contenido para que no quede tapado
+    // detrás del menú. Se calcula automáticamente según su altura real.
+    function ajustarEspacioHeader() {
+      const header = document.getElementById("appHeader");
+      if (header) {
+        document.documentElement.style.setProperty("--header-h", header.offsetHeight + "px");
+      }
+    }
+    ajustarEspacioHeader();
+    window.addEventListener("load", ajustarEspacioHeader);
+    window.addEventListener("resize", ajustarEspacioHeader);
+  </script>
+
+  <div class="layout">
+    <main class="feed-col">
+      <h2 id="welcome" style="font-size:20px; margin-bottom:16px;">Bienvenido</h2>
+      <section class="post-box">
+        <textarea id="postContent" class="field" rows="3" placeholder="Escribe un mensaje..."></textarea>
+        <input type="file" id="fileInput" accept="image/*">
+        <button id="publishBtn" class="btn btn-primary">Enviar mensaje</button>
+      </section>
+
+    
+      <section>
+        <h2 class="section-title">Mensajes</h2>
+        <div id="feed"><p class="empty">Aún no hay mensajes.</p></div>
+      </section>
+
+      <!-- Banner nativo de Adsterra: se mezcla mejor con el contenido,
+           por eso va debajo del feed en vez de en un cuadro aparte. -->
+      <section class="ad-slot ad-slot-native">
+        <span class="ad-slot-label">Publicidad</span>
+        <script async="async" data-cfasync="false" src="https://pl31103729.profitableratecpmnetwork.com/7e91315b281eb257e9f424f32bf00dff/invoke.js"></script>
+        <div id="container-7e91315b281eb257e9f424f32bf00dff"></div>
+      </section>
+    </main>
+    <aside class="side-col">
+      <h3>Usuarios en línea</h3>
+      <ul id="userList"></ul>
+
+      <h3 class="reels-preview-title">Reels recientes</h3>
+      <div id="reelsPreview" class="reels-preview"><p class="empty">Cargando...</p></div>
+
+    
+    </aside>
+  </div>
+
+  <!-- Supabase (almacenamiento de imágenes) -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+
+  <script type="module">
+  import { auth, db, ADMINS } from "./firebase-config.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-auth.js";
+  import {
+    collection, addDoc, serverTimestamp, query, orderBy, onSnapshot,
+    doc, getDoc, setDoc, updateDoc, arrayUnion, deleteDoc, limit, where
+  } from "https://www.gstatic.com/firebasejs/10.12.3/firebase-firestore.js";
+
+  const supabaseUrl = "https://klziukovalzzcinifvaw.supabase.co";
+  const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtseml1a292YWx6emNpbmlmdmF3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY0Mzg1MDcsImV4cCI6MjA3MjAxNDUwN30.edpw-UnymgHSAhp54SX6CCKfEjB7SQDdSrhH3wc-Eh4";
+  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+  let currentUser;
+
+  // Carga los últimos reels subidos (mismo bucket que usa reels.html)
+  // y los muestra como miniaturas en la barra lateral. Al hacer clic en
+  // cualquiera, te lleva a feed.html a verlos completos, estilo TikTok.
+  async function loadReelsPreview() {
+    const container = document.getElementById("reelsPreview");
+    try {
+      const { data, error } = await supabase.storage.from("Samir").list("reels", {
+        limit: 4,
+        sortBy: { column: "created_at", order: "desc" }
+      });
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        container.innerHTML = "<p class='empty'>Todavía no hay reels.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      data.forEach((file) => {
+        const { data: urlData } = supabase.storage.from("Samir").getPublicUrl("reels/" + file.name);
+        const a = document.createElement("a");
+        a.href = "feed.html";
+        a.className = "reel-thumb";
+        a.innerHTML = `<video src="${urlData.publicUrl}" muted preload="metadata"></video>`;
+        container.appendChild(a);
+      });
+    } catch (err) {
+      console.error("Error cargando reels recientes:", err);
+      container.innerHTML = "<p class='empty'>No se pudieron cargar los reels.</p>";
+    }
+  }
+  loadReelsPreview();
+
+  onAuthStateChanged(auth, async (user) => {
+    if (user) {
+      currentUser = user;
+      const userRef = doc(db, "users", user.uid);
+      const userSnap = await getDoc(userRef);
+      let displayName = user.email;
+      if (userSnap.exists() && userSnap.data().nombre) {
+        displayName = userSnap.data().nombre;
+      }
+      document.getElementById("profileName").innerText = displayName;
+      document.getElementById("profileAvatar").innerText = displayName.slice(0, 2).toUpperCase();
+      document.getElementById("welcome").innerText = "Bienvenido, " + displayName;
+
+      if (ADMINS.includes(user.uid)) {
+        const btnAdmin = document.getElementById("btnAdmin");
+        btnAdmin.style.display = "block";
+        btnAdmin.addEventListener("click", () => window.location.href = "paneladm.html");
+      }
+
+      await setDoc(doc(db, "onlineUsers", user.uid), {
+        email: user.email,
+        lastActive: serverTimestamp(),
+        online: true
+      });
+      window.addEventListener("beforeunload", async () => {
+        try { await deleteDoc(doc(db, "onlineUsers", user.uid)); } catch (e) {}
+      });
+
+      loadPosts();
+      loadUsers();
+      monitorPrivateChat();
+    } else {
+      window.location.href = "index.html";
+    }
+  });
+
+  async function publishPost() {
+    const contentInput = document.getElementById("postContent");
+    const fileInput = document.getElementById("fileInput");
+    const publishBtn = document.getElementById("publishBtn");
+    const content = contentInput.value.trim();
+    let imageUrl = null;
+
+    if (content === "" && fileInput.files.length === 0) return;
+
+    publishBtn.disabled = true;
+    try {
+      if (fileInput.files.length > 0) {
+        const file = fileInput.files[0];
+        const fileName = Date.now() + "_" + file.name;
+        const { error } = await supabase.storage.from("Chat").upload(fileName, file);
+        if (error) {
+          console.error("Error al subir archivo:", error.message);
+          alert("No se pudo subir la imagen: " + error.message);
+        } else {
+          const { data: publicData } = supabase.storage.from("Chat").getPublicUrl(fileName);
+          imageUrl = publicData.publicUrl;
+        }
+      }
+
+      if (content !== "" || imageUrl) {
+        await addDoc(collection(db, "chat"), {
+          uid: currentUser.uid,
+          content,
+          imageUrl,
+          timestamp: serverTimestamp()
+        });
+      }
+
+      contentInput.value = "";
+      fileInput.value = "";
+    } finally {
+      publishBtn.disabled = false;
+    }
+  }
+  document.getElementById("publishBtn").addEventListener("click", publishPost);
+
+  const nombreCache = new Map();
+  async function nombreDe(uid) {
+    if (!uid) return "Usuario";
+    if (nombreCache.has(uid)) return nombreCache.get(uid);
+    const userDoc = await getDoc(doc(db, "users", uid));
+    const nombre = userDoc.exists() ? (userDoc.data().nombre || "Usuario") : "Usuario";
+    nombreCache.set(uid, nombre);
+    return nombre;
+  }
+
+  function loadPosts() {
+    const qy = query(collection(db, "chat"), orderBy("timestamp", "desc"), limit(50));
+    onSnapshot(qy, async (snapshot) => {
+      const feedDiv = document.getElementById("feed");
+      if (snapshot.empty) {
+        feedDiv.innerHTML = "<p class='empty'>Aún no hay mensajes.</p>";
+        return;
+      }
+      feedDiv.innerHTML = "";
+      for (const docSnap of snapshot.docs) {
+        const post = docSnap.data();
+        const username = await nombreDe(post.uid);
+        const div = document.createElement("div");
+        div.classList.add("post");
+        div.innerHTML = `
+          <div class="post-head">
+            <span class="post-avatar">${username.slice(0,2).toUpperCase()}</span>
+            <strong>${username}</strong>
+          </div>
+          <p class="post-content">${post.content || ""}</p>
+          ${post.imageUrl ? `<img src="${post.imageUrl}" alt="Imagen adjunta">` : ""}
+          <div class="reactions">
+            <button>👍</button>
+            <button>😂</button>
+            <button>❤️</button>
+          </div>
+          <small>${post.timestamp ? post.timestamp.toDate().toLocaleString() : ""}</small>`;
+        feedDiv.appendChild(div);
+      }
+    });
+  }
+
+  function loadUsers() {
+    const qy = query(collection(db, "onlineUsers"));
+    onSnapshot(qy, (snapshot) => {
+      const list = document.getElementById("userList");
+      list.innerHTML = "";
+      if (snapshot.empty) {
+        list.innerHTML = "<li class='empty'>Nadie conectado</li>";
+        return;
+      }
+      snapshot.docs.forEach(d => {
+        const data = d.data();
+        const li = document.createElement("li");
+        li.innerHTML = `<span class="status-dot" style="background:${data.online ? 'var(--mint)' : 'var(--ink-faint)'}"></span> ${data.email}`;
+        list.appendChild(li);
+      });
+    });
+  }
+
+  function monitorPrivateChat() {
+    const chatNotif = document.getElementById("chatNotif");
+    // Se filtra por "participants" (array-contains) porque las reglas de
+    // seguridad de Firestore, para consultas de lista, exigen que la propia
+    // consulta pruebe que el usuario actual pertenece al chat. Sin este
+    // filtro la consulta era rechazada por permisos y la burbujita nunca
+    // se actualizaba. El orden ya no importa aquí porque solo se cuenta,
+    // así que se quita el orderBy para no requerir un índice compuesto.
+    const qy = query(collection(db, "privateChat"), where("participants", "array-contains", currentUser.uid));
+    onSnapshot(qy, (snapshot) => {
+      let unread = 0;
+      snapshot.docs.forEach(docSnap => {
+        const msg = docSnap.data();
+        if (msg.uid !== currentUser.uid && msg.to === currentUser.uid && (!msg.readBy || !msg.readBy.includes(currentUser.uid))) {
+          unread++;
+        }
+      });
+      if (unread > 0) {
+        chatNotif.style.display = "inline-block";
+        chatNotif.textContent = unread;
+      } else {
+        chatNotif.style.display = "none";
+      }
+    }, (err) => {
+      console.error("Error monitoreando mensajes privados:", err);
+    });
+  }
+
+  // NOTA: antes había aquí un listener en el link "Chat" que marcaba TODOS
+  // los mensajes como leídos apenas se hacía clic, incluso antes de abrir
+  // ninguna conversación — por eso la burbujita se apagaba de inmediato.
+  // Se quitó: chat.html ya marca como leída cada conversación, pero solo
+  // cuando realmente la abres (ver markAsRead() en chat.html), así la
+  // burbujita refleja el estado real hasta que entras a leer.
+
+  document.getElementById("editNameBtn").addEventListener("click", async () => {
+    const newName = prompt("Escribe tu nuevo nombre:");
+    if (newName && currentUser) {
+      await setDoc(doc(db, "users", currentUser.uid), { nombre: newName }, { merge: true });
+      document.getElementById("profileName").innerText = newName;
+      document.getElementById("profileAvatar").innerText = newName.slice(0,2).toUpperCase();
+      document.getElementById("welcome").innerText = "Bienvenido, " + newName;
+      nombreCache.set(currentUser.uid, newName);
+    }
+  });
+
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    try { if (currentUser) await deleteDoc(doc(db, "onlineUsers", currentUser.uid)); } catch (e) {}
+    signOut(auth).then(() => window.location.href = "index.html");
+  });
+
+  document.getElementById("toggleMode").addEventListener("click", (e) => {
+    e.preventDefault();
+    document.body.classList.toggle("light-mode");
+    document.getElementById("toggleMode").innerHTML =
+      document.body.classList.contains("light-mode") ? "🌙 Modo oscuro" : "🌙 Modo claro";
+  });
+
+  document.getElementById("profile").addEventListener("click", () => {
+    const menu = document.getElementById("profileMenu");
+    menu.style.display = menu.style.display === "block" ? "none" : "block";
+  });
+  </script>
+</body>
+</html>
