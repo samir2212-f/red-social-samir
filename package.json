@@ -1,0 +1,9 @@
+{
+  "name": "red-social-samir",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Dependencias del backend (funciones serverless en /api). El resto del sitio es HTML/CSS/JS puro y no necesita build.",
+  "dependencies": {
+    "firebase-admin": "^12.1.0"
+  }
+}
