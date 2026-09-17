@@ -994,22 +994,36 @@ input.rename {
 }
 .call-modal-header span:first-child { font-weight: 700; }
 .call-status { color: var(--ink-dim); font-size: 12.5px; }
+.call-minimize {
+  border: none;
+  background: transparent;
+  color: var(--ink-dim);
+  font-size: 15px;
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  margin-left: auto;
+}
+.call-minimize:hover { background: var(--surface-2); }
 
 .video-area {
   position: relative;
   background: #000;
   aspect-ratio: 4 / 3;
   width: 100%;
+  overflow: hidden;
 }
-.remote-video { width: 100%; height: 100%; object-fit: cover; }
+.remote-video { width: 100%; height: 100%; object-fit: cover; display: block; }
 .local-video {
   position: absolute;
   bottom: 12px;
   right: 12px;
   width: 110px;
+  height: 140px;
   border-radius: var(--radius-sm);
   border: 2px solid var(--surface);
   object-fit: cover;
+  background: #111;
 }
 
 .audio-area {
@@ -1048,6 +1062,44 @@ input.rename {
   background: var(--surface-2);
 }
 .call-hangup { background: var(--danger) !important; }
+#shareScreenBtn.sharing-active { background: var(--danger) !important; }
+
+/* --- Burbuja flotante (llamada minimizada) ---
+   El usuario puede minimizar la llamada mientras sigue activa: se
+   convierte en una cajita chica que se puede arrastrar por la pantalla,
+   y el resto de la app (el chat, escribir mensajes, etc.) vuelve a
+   responder normalmente porque ya no hay overlay tapando la pantalla. */
+.call-modal.minimized {
+  background: transparent;
+  pointer-events: none; /* deja pasar los clics hacia el chat de atrás */
+  align-items: stretch;
+  justify-content: stretch;
+  padding: 0;
+}
+.call-modal.minimized .call-modal-box {
+  pointer-events: auto; /* la burbuja en sí sigue respondiendo a clics/arrastre */
+  position: fixed;
+  width: 180px;
+  max-width: 180px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  cursor: grab;
+  z-index: 1200;
+}
+.call-modal.minimized .call-modal-box:active { cursor: grabbing; }
+.call-modal.minimized .call-modal-header {
+  padding: 6px 8px;
+  font-size: 11px;
+}
+.call-modal.minimized .video-area { aspect-ratio: 4 / 3; }
+.call-modal.minimized .local-video { width: 44px; height: 56px; bottom: 6px; right: 6px; }
+.call-modal.minimized .audio-area { padding: 14px 10px; }
+.call-modal.minimized .audio-avatar { width: 46px; height: 46px; font-size: 20px; }
+.call-modal.minimized .call-controls { padding: 8px; gap: 8px; }
+.call-modal.minimized .call-controls button {
+  width: 32px;
+  height: 32px;
+  font-size: 13px;
+}
 
 
 /* Registro de llamada dentro del chat (estilo WhatsApp) */
