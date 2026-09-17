@@ -71,6 +71,7 @@
       <div class="call-modal-header">
         <span id="callWithLabel"></span>
         <span id="callStatusLabel" class="call-status"></span>
+        <button id="minimizeCallBtn" type="button" class="call-minimize" title="Minimizar (seguir escribiendo)">🗕</button>
       </div>
 
       <div id="videoArea" class="video-area" style="display:none;">
@@ -137,6 +138,7 @@
     // Estado de la llamada activa (audio o video, WebRTC directo)
     let peerConnection = null;
     let localStream = null;
+    let screenStream = null; // no-null mientras se está compartiendo la pantalla
     let isCaller = false;
     let currentCallType = null;   // "audio" | "video"
     let activeCallDocId = null;
@@ -156,13 +158,6 @@
     let unsubCallDoc = null;
     let unsubRemoteCandidates = null;
     let unsubIncomingCalls = null;
-
-    // Compartir pantalla: guardamos aparte el track de la cámara para
-    // poder volver a él cuando se deja de compartir (o cuando el propio
-    // navegador corta el compartir con su botón nativo "Dejar de compartir").
-    let screenStream = null;
-    let camaraVideoTrack = null;
-    let compartiendoPantalla = false;
 
     // Servidores STUN/TURN gratuitos para que los dos navegadores puedan
     // encontrarse. STUN (de Google) resuelve la mayoría de los casos;
@@ -547,9 +542,9 @@
       document.getElementById("videoArea").style.display = type === "video" ? "flex" : "none";
       document.getElementById("audioArea").style.display = type === "video" ? "none" : "flex";
       document.getElementById("toggleCamBtn").style.display = type === "video" ? "inline-flex" : "none";
-      // Compartir pantalla solo tiene sentido en videollamada (necesitamos
-      // reemplazar el track de video que ya está fluyendo hacia el otro lado).
-      document.getElementById("shareScreenBtn").style.display = type === "video" ? "inline-flex" : "none";
+      const soportaCompartirPantalla = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
+      document.getElementById("shareScreenBtn").style.display =
+        (type === "video" && soportaCompartirPantalla) ? "inline-flex" : "none";
       if (type === "video") {
         document.getElementById("localVideo").srcObject = localStream;
       }
@@ -579,86 +574,6 @@
       if (callTimerInterval) {
         clearInterval(callTimerInterval);
         callTimerInterval = null;
-      }
-    }
-
-    // Compartir pantalla en videollamada: reemplazamos el track de video
-    // que el peerConnection ya está enviando (sender.replaceTrack) por el
-    // track de la captura de pantalla, sin tener que renegociar la
-    // conexión ni el otro lado tiene que hacer nada especial: para él
-    // simplemente cambia la imagen que recibe.
-    async function alternarCompartirPantalla() {
-      if (!peerConnection || currentCallType !== "video") return;
-
-      const btn = document.getElementById("shareScreenBtn");
-
-      if (compartiendoPantalla) {
-        detenerCompartirPantalla();
-        return;
-      }
-
-      let capturedStream;
-      try {
-        capturedStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-      } catch (err) {
-        // El usuario canceló el diálogo de "elegir pantalla/ventana" o el
-        // navegador no lo permite: no es un error real, simplemente no hacemos nada.
-        return;
-      }
-
-      const screenTrack = capturedStream.getVideoTracks()[0];
-      const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
-
-      // Guardamos el track de la cámara (si había) para poder restaurarlo
-      // después, y lo apagamos para que el foco de la cámara se libere
-      // mientras se comparte pantalla.
-      camaraVideoTrack = localStream ? localStream.getVideoTracks()[0] : null;
-
-      if (sender) {
-        await sender.replaceTrack(screenTrack);
-      }
-
-      screenStream = capturedStream;
-      compartiendoPantalla = true;
-
-      // Mostramos también en el recuadro local lo que se está compartiendo.
-      document.getElementById("localVideo").srcObject = capturedStream;
-
-      if (btn) {
-        btn.textContent = "🛑";
-        btn.title = "Dejar de compartir pantalla";
-      }
-
-      // Si el usuario deja de compartir desde el propio control nativo del
-      // navegador (el aviso de "Dejar de compartir" fuera de esta página),
-      // este evento nos avisa para volver a la cámara automáticamente.
-      screenTrack.onended = () => detenerCompartirPantalla();
-    }
-
-    async function detenerCompartirPantalla() {
-      if (!compartiendoPantalla) return;
-
-      if (screenStream) {
-        screenStream.getTracks().forEach(track => track.stop());
-        screenStream = null;
-      }
-
-      // Volvemos a mandar el track de la cámara original, si seguía vivo
-      // (si el usuario no cerró la llamada ni apagó la cámara mientras
-      // compartía pantalla).
-      if (peerConnection && camaraVideoTrack && camaraVideoTrack.readyState === "live") {
-        const videoSender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
-        if (videoSender) await videoSender.replaceTrack(camaraVideoTrack);
-      }
-
-      document.getElementById("localVideo").srcObject = localStream;
-      compartiendoPantalla = false;
-      camaraVideoTrack = null;
-
-      const btn = document.getElementById("shareScreenBtn");
-      if (btn) {
-        btn.textContent = "🖥️";
-        btn.title = "Compartir pantalla";
       }
     }
 
@@ -720,15 +635,6 @@
       if (unsubCallDoc) { unsubCallDoc(); unsubCallDoc = null; }
       if (unsubRemoteCandidates) { unsubRemoteCandidates(); unsubRemoteCandidates = null; }
 
-      // Si se estaba compartiendo pantalla, cortamos también esa captura
-      // (si no, el navegador la seguiría dejando activa aunque colguemos).
-      if (screenStream) {
-        screenStream.getTracks().forEach(track => track.stop());
-        screenStream = null;
-      }
-      compartiendoPantalla = false;
-      camaraVideoTrack = null;
-
       if (localStream) {
         localStream.getTracks().forEach(track => track.stop());
         localStream = null;
@@ -752,10 +658,22 @@
         }, 1500);
       }
 
+      if (screenStream) {
+        screenStream.getTracks().forEach(t => t.stop());
+        screenStream = null;
+      }
+      document.getElementById("shareScreenBtn").textContent = "🖥️";
+      document.getElementById("shareScreenBtn").title = "Compartir pantalla";
+      document.getElementById("shareScreenBtn").classList.remove("sharing-active");
+
       document.getElementById("remoteVideo").srcObject = null;
       document.getElementById("localVideo").srcObject = null;
       document.getElementById("remoteAudio").srcObject = null;
       document.getElementById("callModal").style.display = "none";
+      document.getElementById("callModal").classList.remove("minimized");
+      document.getElementById("minimizeCallBtn").textContent = "🗕";
+      document.querySelector(".call-modal-box").style.top = "";
+      document.querySelector(".call-modal-box").style.left = "";
 
       limpiarEstadoLlamada();
       } finally {
@@ -764,11 +682,6 @@
     }
 
     function limpiarEstadoLlamada() {
-      const shareBtn = document.getElementById("shareScreenBtn");
-      if (shareBtn) {
-        shareBtn.textContent = "🖥️";
-        shareBtn.title = "Compartir pantalla";
-      }
       activeCallDocId = null;
       activeCallPeerUid = null;
       activeCallPeerName = null;
@@ -798,9 +711,153 @@
       document.getElementById("toggleCamBtn").textContent = track.enabled ? "🎥" : "📷";
     });
 
+    // --- Compartir pantalla ---
+    // Cambia (con replaceTrack) el video que se manda al otro lado por
+    // la captura de pantalla, sin tener que rearmar la conexión WebRTC.
+    // La cámara sigue prendida de fondo en localStream para poder volver
+    // a ella apenas se corta el compartir.
+    async function iniciarCompartirPantalla() {
+      if (!peerConnection || !localStream) return;
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+      } catch (err) {
+        // El usuario cerró el cuadro de "elegir pantalla/ventana" sin elegir nada.
+        return;
+      }
+      screenStream = stream;
+      const screenTrack = stream.getVideoTracks()[0];
+      const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+      if (sender) await sender.replaceTrack(screenTrack);
+      document.getElementById("localVideo").srcObject = stream;
+
+      const btn = document.getElementById("shareScreenBtn");
+      btn.textContent = "🛑";
+      btn.title = "Dejar de compartir pantalla";
+      btn.classList.add("sharing-active");
+
+      // Si el usuario corta el compartir desde el propio aviso del
+      // navegador ("Dejar de compartir"), volvemos solos a la cámara.
+      screenTrack.onended = () => detenerCompartirPantalla();
+    }
+
+    async function detenerCompartirPantalla() {
+      if (!screenStream) return;
+      screenStream.getTracks().forEach(t => t.stop());
+      screenStream = null;
+
+      if (peerConnection && localStream) {
+        const camTrack = localStream.getVideoTracks()[0];
+        const sender = peerConnection.getSenders().find(s => s.track && s.track.kind === "video");
+        if (sender && camTrack) await sender.replaceTrack(camTrack);
+        document.getElementById("localVideo").srcObject = localStream;
+      }
+
+      const btn = document.getElementById("shareScreenBtn");
+      btn.textContent = "🖥️";
+      btn.title = "Compartir pantalla";
+      btn.classList.remove("sharing-active");
+    }
+
     document.getElementById("shareScreenBtn").addEventListener("click", () => {
-      alternarCompartirPantalla();
+      if (screenStream) {
+        detenerCompartirPantalla();
+      } else {
+        iniciarCompartirPantalla();
+      }
     });
+
+    // --- Minimizar la llamada a una burbuja flotante y arrastrable ---
+    // Así el usuario puede seguir escribiendo en el chat (o navegando)
+    // mientras sigue en la llamada; la llamada NO se corta, solo se
+    // achica visualmente.
+    const callModalEl = document.getElementById("callModal");
+    const callBoxEl = document.querySelector(".call-modal-box");
+    const minimizeBtn = document.getElementById("minimizeCallBtn");
+
+    function minimizarLlamada() {
+      callModalEl.classList.add("minimized");
+      minimizeBtn.textContent = "🗖";
+      minimizeBtn.title = "Restaurar llamada";
+      // Posición inicial de la burbuja: esquina inferior derecha.
+      if (!callBoxEl.style.top && !callBoxEl.style.left) {
+        callBoxEl.style.top = (window.innerHeight - 250) + "px";
+        callBoxEl.style.left = (window.innerWidth - 200) + "px";
+      }
+    }
+
+    function restaurarLlamada() {
+      callModalEl.classList.remove("minimized");
+      minimizeBtn.textContent = "🗕";
+      minimizeBtn.title = "Minimizar (seguir escribiendo)";
+    }
+
+    minimizeBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (callModalEl.classList.contains("minimized")) {
+        restaurarLlamada();
+      } else {
+        minimizarLlamada();
+      }
+    });
+
+    // Arrastrar la burbuja (mouse y touch). Si el usuario solo hace
+    // click sin mover el dedo/mouse, se restaura la llamada a tamaño
+    // completo (como en WhatsApp/Messenger).
+    (function habilitarArrastre() {
+      let arrastrando = false;
+      let movida = false;
+      let offsetX = 0, offsetY = 0;
+
+      function empezar(clientX, clientY) {
+        if (!callModalEl.classList.contains("minimized")) return;
+        arrastrando = true;
+        movida = false;
+        const rect = callBoxEl.getBoundingClientRect();
+        offsetX = clientX - rect.left;
+        offsetY = clientY - rect.top;
+      }
+
+      function mover(clientX, clientY) {
+        if (!arrastrando) return;
+        movida = true;
+        let x = clientX - offsetX;
+        let y = clientY - offsetY;
+        const maxX = window.innerWidth - callBoxEl.offsetWidth - 8;
+        const maxY = window.innerHeight - callBoxEl.offsetHeight - 8;
+        x = Math.max(8, Math.min(x, maxX));
+        y = Math.max(8, Math.min(y, maxY));
+        callBoxEl.style.left = x + "px";
+        callBoxEl.style.top = y + "px";
+      }
+
+      function terminar() {
+        if (!arrastrando) return;
+        arrastrando = false;
+        if (!movida && callModalEl.classList.contains("minimized")) {
+          restaurarLlamada();
+        }
+      }
+
+      callBoxEl.addEventListener("mousedown", (e) => {
+        if (!callModalEl.classList.contains("minimized")) return;
+        empezar(e.clientX, e.clientY);
+      });
+      window.addEventListener("mousemove", (e) => mover(e.clientX, e.clientY));
+      window.addEventListener("mouseup", terminar);
+
+      callBoxEl.addEventListener("touchstart", (e) => {
+        if (!callModalEl.classList.contains("minimized")) return;
+        const t = e.touches[0];
+        empezar(t.clientX, t.clientY);
+      }, { passive: true });
+      window.addEventListener("touchmove", (e) => {
+        if (!arrastrando) return;
+        const t = e.touches[0];
+        mover(t.clientX, t.clientY);
+      }, { passive: true });
+      window.addEventListener("touchend", terminar);
+    })();
 
     document.getElementById("backBtn").addEventListener("click", () => {
       if (unsubMessages) unsubMessages();
